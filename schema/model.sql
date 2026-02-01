@@ -18,3 +18,12 @@ CREATE TABLE IF NOT EXISTS sessions (
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS pokemon (
+    pokemon_id integer PRIMARY KEY,
+    name text NOT NULL UNIQUE,
+    height integer NOT NULL,
+    weight integer NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

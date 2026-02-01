@@ -52,7 +52,8 @@ func runServe(cmd *cobra.Command, args []string) {
 
 	// Initialize routes
 	config := route.Config{
-		Db: db,
+		Db:     db,
+		Logger: logger,
 	}
 	handler := route.Initialize(config)
 

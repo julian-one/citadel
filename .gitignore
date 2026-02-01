@@ -23,8 +23,8 @@ go.work.sum
 .env
 config.json
 
-# log file
-server.log
-
-# db
+# sqlite
 *.db
+
+# curl
+curl.*

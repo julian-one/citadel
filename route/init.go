@@ -1,6 +1,7 @@
 package route
 
 import (
+	"log/slog"
 	"net/http"
 
 	"citadel/internal/middleware"
@@ -9,7 +10,8 @@ import (
 )
 
 type Config struct {
-	Db *sqlx.DB
+	Db     *sqlx.DB
+	Logger *slog.Logger
 }
 
 func Initialize(config Config) http.Handler {
@@ -31,6 +33,7 @@ func Initialize(config Config) http.Handler {
 	mux.Handle("GET /health", baseChain.ThenFunc(GetHealth()))
 	mux.Handle("POST /register", baseChain.ThenFunc(Register(config.Db)))
 	mux.Handle("POST /login", baseChain.ThenFunc(Login(config.Db)))
+	mux.Handle("GET /pokemon", baseChain.ThenFunc(GetPokemon(config.Logger, config.Db)))
 
 	// Protected routes
 	mux.Handle("GET /me", protectedChain.ThenFunc(GetMe()))
