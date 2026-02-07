@@ -2,35 +2,39 @@ package session
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
 
-	"citadel/internal/user"
-
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
 const (
 	SessionDuration = 24 * time.Hour
-	SessionIDLength = 32 // 32 bytes = 64 hex chars
+	SessionIdLength = 32 // 32 bytes = 64 hex chars
 )
 
 const (
-	CookieName     = "session_id"
+	CookieName     = "TOKEN"
 	cookieMaxAge   = int(24 * time.Hour / time.Second) // 24 hours in seconds
 	cookiePath     = "/"
-	cookieSecure   = false // Set to true in production with HTTPS
+	cookieSecure   = false // TODO: Set to true in production with HTTPS
 	cookieHTTPOnly = true
-	cookieSameSite = http.SameSiteStrictMode
+	cookieSameSite = http.SameSiteLaxMode
 )
 
-func SetSessionCookie(w http.ResponseWriter, sessionID string) {
+type Session struct {
+	SessionId string    `json:"session_id" db:"session_id"`
+	User      string    `json:"user_id"    db:"user_id"`
+	ExpiresAt time.Time `json:"expires_at" db:"expires_at"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+func SetSessionCookie(w http.ResponseWriter, sessionId string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
-		Value:    sessionID,
+		Value:    sessionId,
 		Path:     cookiePath,
 		MaxAge:   cookieMaxAge,
 		Secure:   cookieSecure,
@@ -51,43 +55,54 @@ func ClearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// Create generates a new session for the user.
 func Create(
 	ctx context.Context,
 	db *sqlx.DB,
-	userId int64,
-) (string, error) {
-	sessionId, err := generateSessionId()
-	if err != nil {
-		return "", fmt.Errorf("failed to generate session ID: %w", err)
-	}
-
+	userId string,
+) (*Session, error) {
+	// define session expiration time
 	expiresAt := time.Now().Add(SessionDuration)
 
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO sessions (session_id, user_id, expires_at)
-		VALUES (?, ?, ?)
-	`, sessionId, userId, expiresAt)
-	if err != nil {
-		return "", fmt.Errorf("failed to create session: %w", err)
-	}
+	// generate a secure random session id
+	sessionId := uuid.New().String()
 
-	return sessionId, nil
+	// insert session into database and return the created session
+	var s Session
+	err := db.QueryRowxContext(ctx,
+		`INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?) RETURNING *;`,
+		sessionId, userId, expiresAt,
+	).StructScan(&s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %w", err)
+	}
+	return &s, nil
 }
 
-// Validate checks if session exists and is not expired, returns user data.
-func Validate(ctx context.Context, db *sqlx.DB, sessionID string) (*user.User, error) {
-	var u user.User
-	err := db.GetContext(ctx, &u, `
-		SELECT u.*
-		FROM sessions s
-		JOIN users u ON s.user_id = u.user_id
-		WHERE s.session_id = ? AND s.expires_at > datetime('now')
-	`, sessionID)
+// IsValid checks if session exists and is not expired
+func IsValid(ctx context.Context, db *sqlx.DB, sessionId string) (bool, error) {
+	var exists bool
+	err := db.GetContext(ctx, &exists,
+		`SELECT EXISTS(
+			SELECT 1 FROM sessions 
+			WHERE session_id = ? AND expires_at > datetime('now')
+		)`,
+		sessionId)
 	if err != nil {
-		return nil, fmt.Errorf("invalid or expired session: %w", err)
+		return false, fmt.Errorf("failed to validate session: %w", err)
 	}
-	return &u, nil
+	return exists, nil
+}
+
+// Get retrieves session by id
+func Get(ctx context.Context, db *sqlx.DB, sessionId string) (*Session, error) {
+	var s Session
+	err := db.GetContext(ctx, &s,
+		`SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now')`,
+		sessionId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+	return &s, nil
 }
 
 // Delete removes a specific session (logout).
@@ -106,21 +121,4 @@ func DeleteAllForUser(ctx context.Context, db *sqlx.DB, userID int64) error {
 		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}
 	return nil
-}
-
-// CleanupExpired removes expired sessions (call periodically).
-func CleanupExpired(ctx context.Context, db *sqlx.DB) (int64, error) {
-	result, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at <= datetime('now')`)
-	if err != nil {
-		return 0, fmt.Errorf("failed to cleanup expired sessions: %w", err)
-	}
-	return result.RowsAffected()
-}
-
-func generateSessionId() (string, error) {
-	bytes := make([]byte, SessionIDLength)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }

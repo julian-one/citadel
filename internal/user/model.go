@@ -2,14 +2,29 @@ package user
 
 import "time"
 
+type Role string
+
+const (
+	RoleAdmin Role = "admin"
+	RoleUser  Role = "user"
+)
+
+func (r Role) Valid() bool {
+	switch r {
+	case RoleAdmin, RoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
 type User struct {
-	UserId    int64      `db:"user_id"       json:"user_id"`
-	Username  string     `db:"username"      json:"username"`
-	Email     string     `db:"email"         json:"email"`
-	Hash      string     `db:"password_hash" json:"-"`
-	Salt      []byte     `db:"salt"          json:"-"`
-	Role      string     `db:"role"          json:"role"`
-	LastLogin *time.Time `db:"last_login"    json:"last_login,omitempty"`
-	CreatedAt time.Time  `db:"created_at"    json:"created_at"`
-	UpdatedAt time.Time  `db:"updated_at"    json:"updated_at"`
+	Id        string    `db:"user_id"       json:"user_id"`
+	Username  string    `db:"username"      json:"username"`
+	Email     string    `db:"email"         json:"email"`
+	Hash      string    `db:"password_hash" json:"-"`
+	Salt      []byte    `db:"salt"          json:"-"`
+	Role      Role      `db:"role"          json:"role"`
+	CreatedAt time.Time `db:"created_at"    json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"    json:"updated_at"`
 }

@@ -63,7 +63,7 @@ func fetch(ctx context.Context, db *sqlx.DB, name string) (*Pokemon, error) {
 	return &p, nil
 }
 
-func GetPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
+func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -106,7 +106,10 @@ func GetPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		logger.Info("fetching from pokeapi", slog.String("name", name))
 		response, err := pokeapi.Pokemon(name)
 		if err != nil {
-			if strings.Contains(err.Error(), "invalid character 'N' looking for beginning of value") {
+			if strings.Contains(
+				err.Error(),
+				"invalid character 'N' looking for beginning of value",
+			) {
 				w.WriteHeader(http.StatusNotFound)
 				w.Header().Set("Content-Type", "application/json")
 				json.NewEncoder(w).

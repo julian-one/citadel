@@ -1,29 +1,26 @@
 CREATE TABLE IF NOT EXISTS users (
-    user_id integer PRIMARY KEY AUTOINCREMENT,
-    username text NOT NULL UNIQUE,
-    email text NOT NULL UNIQUE,
-    password_hash text NOT NULL,
-    salt BLOB NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user' CHECK (ROLE IN ('admin', 'user')),
-    last_login DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  user_id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  salt BLOB NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (ROLE IN ('admin', 'user')),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-    session_id text PRIMARY KEY,
-    user_id integer NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+  session_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS pokemon (
-    pokemon_id integer PRIMARY KEY,
-    name text NOT NULL UNIQUE,
-    height integer NOT NULL,
-    weight integer NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  pokemon_id TEXT PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  height INTEGER NOT NULL,
+  weight INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
