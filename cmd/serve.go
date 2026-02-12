@@ -16,11 +16,13 @@ import (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the Citadel HTTP server",
-	Long:  `The serve command starts the Citadel HTTP server using the configuration`,
+	Long:  `The serve command starts the Citadel HTTP web server`,
 	Run:   runServe,
 }
 
 func runServe(cmd *cobra.Command, args []string) {
+	ctx := cmd.Context()
+
 	// Set defaults
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("database.path", "./citadel.db")
@@ -32,7 +34,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	viper.AddConfigPath(".")
 
 	if err := viper.ReadInConfig(); err != nil {
-		slog.Error("Failed to read config file", "error", err)
+		slog.ErrorContext(ctx, "failed to read config file", "error", err)
 		os.Exit(1)
 	}
 
@@ -40,28 +42,25 @@ func runServe(cmd *cobra.Command, args []string) {
 	logger := logging.New(slog.LevelInfo)
 	slog.SetDefault(logger)
 
-	logger.Info("Starting citadel")
-
 	// Initialize database
 	db, err := database.New(viper.GetString("database.path"), viper.GetString("database.schema"))
 	if err != nil {
-		logger.Error("Failed to connect to database", "error", err)
+		logger.ErrorContext(ctx, "failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	// Initialize routes
-	config := route.Config{
+	// Initialize route handlers
+	handler := route.Initialize(route.Config{
 		Db:     db,
 		Logger: logger,
-	}
-	handler := route.Initialize(config)
+	})
 
-	// Start server
+	// Start HTTP server
 	port := viper.GetString("server.port")
-	logger.Info("Server listening", "port", port)
+	logger.InfoContext(ctx, "Server listening", "port", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		logger.Error("Server error", "error", err)
+		logger.ErrorContext(ctx, "failed to start server", "error", err)
 		os.Exit(1)
 	}
 }

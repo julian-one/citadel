@@ -20,7 +20,7 @@ func Initialize(config Config) http.Handler {
 		middleware.CORS,
 	)
 	protectedChain := baseChain.Use(
-		middleware.RequireAuth(config.Db),
+		middleware.Authentication(config.Db),
 	)
 
 	mux := http.NewServeMux()
@@ -37,14 +37,32 @@ func Initialize(config Config) http.Handler {
 	mux.Handle("POST /register", baseChain.ThenFunc(Register(config.Logger, config.Db)))
 	mux.Handle("POST /login", baseChain.ThenFunc(Login(config.Logger, config.Db)))
 	mux.Handle("POST /logout", baseChain.ThenFunc(Logout(config.Logger, config.Db)))
-	mux.Handle("GET /session/{id}", baseChain.ThenFunc(GetSession(config.Db)))
+	mux.Handle("GET /sessions/{id}", baseChain.ThenFunc(GetSession(config.Db)))
 
 	// -----------------
 	// Protected routes
 	// -----------------
-	mux.Handle("GET /user", protectedChain.ThenFunc(ListUsers(config.Db)))
-	mux.Handle("GET /user/{id}", protectedChain.ThenFunc(GetUser(config.Logger, config.Db)))
-	mux.Handle("PATCH /user/{id}", protectedChain.ThenFunc(UpdateUser(config.Logger, config.Db)))
+
+	// Users
+	mux.Handle("GET /users", protectedChain.ThenFunc(ListUsers(config.Logger, config.Db)))
+	mux.Handle("GET /users/{id}", protectedChain.ThenFunc(GetUser(config.Logger, config.Db)))
+	mux.Handle("PATCH /users/{id}", protectedChain.ThenFunc(UpdateUser(config.Logger, config.Db)))
+
+	// Sessions
+	mux.Handle(
+		"GET /users/{id}/sessions",
+		protectedChain.ThenFunc(ListSessions(config.Logger, config.Db)),
+	)
+	mux.Handle(
+		"DELETE /users/{id}/sessions",
+		protectedChain.ThenFunc(DeleteAllSessions(config.Logger, config.Db)),
+	)
+	mux.Handle(
+		"DELETE /sessions/{id}",
+		protectedChain.ThenFunc(DeleteSession(config.Logger, config.Db)),
+	)
+
+	// Pokemon
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))
 
 	return mux

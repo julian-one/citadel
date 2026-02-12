@@ -10,11 +10,23 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ListUsers(db *sqlx.DB) http.HandlerFunc {
+func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("ListUsers called")
 		ctx := r.Context()
-		users, err := user.List(ctx, db)
+
+		opts, err := user.ParseListOptions(r)
 		if err != nil {
+			logger.Error("Failed to parse list options", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		users, err := user.List(ctx, db, opts)
+		if err != nil {
+			logger.Error("Failed to list users", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list users"})
@@ -52,8 +64,7 @@ func GetUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	type Request struct {
-		Username *string `json:"username,omitempty"`
-		Role     *string `json:"role,omitempty"`
+		Role *string `json:"role,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -72,24 +83,6 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid role provided"})
 			return
-		}
-
-		if req.Username != nil {
-			taken, err := user.IsUsernameTaken(ctx, db, *req.Username)
-			if err != nil {
-				logger.Error("Failed to check username availability", "error", err)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).
-					Encode(map[string]string{"error": "Failed to check username availability"})
-				return
-			}
-			if taken {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Username is already taken"})
-				return
-			}
 		}
 
 		id := r.PathValue("id")

@@ -24,7 +24,7 @@ func (c Chain) Use(m Middleware) Chain {
 }
 
 // Then applies the chain to a handler
-// First middleware in chain is outermost (runs first on request, last on response)
+// First middleware in chain is outermost
 func (c Chain) Then(h http.Handler) http.Handler {
 	for i := len(c.middlewares) - 1; i >= 0; i-- {
 		h = c.middlewares[i](h)
