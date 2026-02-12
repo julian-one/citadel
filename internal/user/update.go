@@ -11,16 +11,12 @@ func Update(
 	ctx context.Context,
 	db *sqlx.DB,
 	userId string,
-	username *string,
 	role *string,
 ) (*User, error) {
 	query := sq.Update("users").
 		Set("updated_at", sq.Expr("datetime('now')")).
 		Where(sq.Eq{"user_id": userId})
 
-	if username != nil {
-		query = query.Set("username", *username)
-	}
 	if role != nil {
 		query = query.Set("role", *role)
 	}
