@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"citadel/internal/middleware"
+	"citadel/internal/session"
 	"citadel/internal/user"
 
 	"github.com/jmoiron/sqlx"
@@ -13,7 +15,6 @@ import (
 func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("ListUsers called")
-		ctx := r.Context()
 
 		opts, err := user.ParseListOptions(r)
 		if err != nil {
@@ -24,6 +25,7 @@ func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		ctx := r.Context()
 		users, err := user.List(ctx, db, opts)
 		if err != nil {
 			logger.Error("Failed to list users", "error", err)
@@ -64,10 +66,10 @@ func GetUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	type Request struct {
-		Role *string `json:"role,omitempty"`
+		Username *string `json:"username,omitempty"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+		logger.Info("UpdateUser called")
 
 		var req Request
 		if json.NewDecoder(r.Body).Decode(&req) != nil {
@@ -76,19 +78,44 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
 			return
 		}
-		// validate role, if provided
-		if req.Role != nil && !user.Role(*req.Role).Valid() {
-			logger.Error("Invalid role provided", "role", req.Role)
+
+		ctx := r.Context()
+		taken, err := user.IsUsernameTaken(ctx, db, *req.Username)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to check username"})
+			return
+		}
+		if taken {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid role provided"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Username is already taken"})
+			return
+		}
+
+		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		if !ok || s == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
 			return
 		}
 
 		id := r.PathValue("id")
-		u, err := user.Update(ctx, db, id, req.Role)
+		if s.User != id {
+			u, err := user.ById(ctx, db, s.User)
+			if err != nil || u.Role != user.RoleAdmin {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).
+					Encode(map[string]string{"error": "You can only update your own username"})
+				return
+			}
+		}
+		u, err := user.Update(ctx, db, id, req.Username, nil)
 		if err != nil {
-			logger.Error("Failed to update user role", "error", err)
+			logger.Error("Failed to update user", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update user role"})
@@ -98,5 +125,44 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(u)
+	}
+}
+
+func UpdateUserRole(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
+	type Request struct {
+		Role string `json:"role"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("UpdateUserRole called")
+
+		var req Request
+		if json.NewDecoder(r.Body).Decode(&req) != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+
+		// validate role
+		if !user.Role(req.Role).Valid() {
+			logger.Error("Invalid role provided", "role", req.Role)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid role provided"})
+			return
+		}
+
+		ctx := r.Context()
+		id := r.PathValue("id")
+		_, err := user.Update(ctx, db, id, nil, &req.Role)
+		if err != nil {
+			logger.Error("Failed to update user role", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update user role"})
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

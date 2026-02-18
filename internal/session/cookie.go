@@ -7,16 +7,15 @@ import (
 
 const (
 	SessionDuration = 24 * time.Hour
-	SessionIdLength = 32 // 32 bytes = 64 hex chars
 )
 
 const (
 	CookieName     = "TOKEN"
-	cookieMaxAge   = int(24 * time.Hour / time.Second) // 24 hours in seconds
+	cookieMaxAge   = int(SessionDuration / time.Second)
 	cookiePath     = "/"
-	cookieSecure   = false // TODO: Set to true in production with HTTPS
+	cookieSecure   = true
 	cookieHTTPOnly = true
-	cookieSameSite = http.SameSiteLaxMode
+	cookieSameSite = http.SameSiteStrictMode
 )
 
 func SetSessionCookie(w http.ResponseWriter, sessionId string) {

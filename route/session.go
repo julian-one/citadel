@@ -10,10 +10,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func GetSession(db *sqlx.DB) http.HandlerFunc {
+func GetSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("GetSession called")
+
+		ctx := r.Context()
 		id := r.PathValue("id")
-		s, err := session.ById(r.Context(), db, id)
+		s, err := session.ById(ctx, db, id)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)

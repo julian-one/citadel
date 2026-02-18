@@ -75,15 +75,10 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 }
 
 func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
-	type Request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		logger.Info("handling login request")
-		// logger.Info("request headers", slog.Any("headers", r.Header))
 		email, password, ok := r.BasicAuth()
 		if !ok {
 			logger.Info("invalid basic auth credentials")
@@ -94,6 +89,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 		logger.Info("received login request", slog.String("email", email))
 
+		// TODO: allow login with either email or username, currently only email is supported
 		u, err := user.ByEmail(ctx, db, email)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")

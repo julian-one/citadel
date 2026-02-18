@@ -17,14 +17,11 @@ func Create(
 	// define session expiration time
 	expiresAt := time.Now().Add(SessionDuration)
 
-	// generate a secure random session id
-	sessionId := uuid.New().String()
-
 	// insert session into database and return the created session
 	var s Session
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?) RETURNING *;`,
-		sessionId, userId, expiresAt,
+		uuid.New().String(), userId, expiresAt,
 	).StructScan(&s)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
