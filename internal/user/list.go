@@ -51,35 +51,12 @@ func ParseListOptions(r *http.Request) (ListOptions, error) {
 		opts.Role = &role
 	}
 
-	// Parse order_by parameter (supports comma-separated format)
-	// Example: ?order_by=username:asc,created_at:desc
 	if orderBy := query.Get("order_by"); orderBy != "" {
-		orders := strings.SplitSeq(orderBy, ",")
-		for order := range orders {
-			parts := strings.Split(strings.TrimSpace(order), ":")
-			if len(parts) != 2 {
-				return opts, fmt.Errorf(
-					"invalid order_by format: %s (expected 'column:order')",
-					order,
-				)
-			}
-
-			column := parts[0]
-			orderStr := strings.ToUpper(parts[1])
-
-			orderDir := database.Order(orderStr)
-			if !orderDir.Valid() {
-				return opts, fmt.Errorf(
-					"invalid order direction: %s (must be 'asc' or 'desc')",
-					parts[1],
-				)
-			}
-
-			opts.OrderBy = append(opts.OrderBy, database.OrderBy{
-				Column: column,
-				Order:  orderDir,
-			})
+		parsed, err := database.ParseOrderBy(orderBy)
+		if err != nil {
+			return opts, err
 		}
+		opts.OrderBy = parsed
 	}
 
 	return opts, nil

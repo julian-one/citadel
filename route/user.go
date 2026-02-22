@@ -18,10 +18,10 @@ func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		opts, err := user.ParseListOptions(r)
 		if err != nil {
-			logger.Error("Failed to parse list options", "error", err)
+			logger.Error("Failed to parse user list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
 			return
 		}
 

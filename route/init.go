@@ -71,6 +71,14 @@ func Initialize(config Config) http.Handler {
 		adminChain.ThenFunc(DeleteSession(config.Logger, config.Db)),
 	)
 
+	// Blog Posts
+	mux.Handle("GET /posts", baseChain.ThenFunc(ListPosts(config.Logger, config.Db)))
+	mux.Handle("POST /posts", protectedChain.ThenFunc(CreatePost(config.Logger, config.Db)))
+	mux.Handle("GET /posts/{id}", baseChain.ThenFunc(GetPost(config.Logger, config.Db)))
+	mux.Handle("PATCH /posts/{id}", protectedChain.ThenFunc(UpdatePost(config.Logger, config.Db)))
+	mux.Handle("DELETE /posts/{id}", protectedChain.ThenFunc(DeletePost(config.Logger, config.Db)))
+	mux.Handle("GET /posts/{id}/revisions", baseChain.ThenFunc(ListPostRevisions(config.Logger, config.Db)))
+
 	// Pokemon
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))
 
