@@ -7,6 +7,7 @@ import (
 	"citadel/internal/middleware"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/cors"
 )
 
 type Config struct {
@@ -17,7 +18,6 @@ type Config struct {
 func Initialize(config Config) http.Handler {
 	baseChain := middleware.New(
 		middleware.Logger,
-		middleware.CORS,
 	)
 	optionalChain := baseChain.Use(
 		middleware.OptionalAuthentication(config.Db),
@@ -31,11 +31,6 @@ func Initialize(config Config) http.Handler {
 	)
 
 	mux := http.NewServeMux()
-
-	// Handle OPTIONS preflight for all routes
-	mux.Handle("OPTIONS /", baseChain.ThenFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
 
 	// -----------------
 	// Public routes
@@ -85,5 +80,13 @@ func Initialize(config Config) http.Handler {
 	// Pokemon
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))
 
-	return mux
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"https://jroberts.info", "http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "Cache-Control"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+
+	return c.Handler(mux)
 }
