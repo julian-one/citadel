@@ -16,13 +16,12 @@ import (
 // isValidColumn validates column names against a whitelist to prevent SQL injection
 func isValidColumn(column string) bool {
 	validColumns := map[string]bool{
-		"post_id":         true,
-		"user_id":         true,
-		"title":           true,
-		"body":            true,
-		"public":          true,
-		"revision_number": true,
-		"created_at":      true,
+		"post_id":    true,
+		"user_id":    true,
+		"title":      true,
+		"body":       true,
+		"public":     true,
+		"created_at": true,
 	}
 	return validColumns[column]
 }
@@ -64,16 +63,8 @@ func ParseListOptions(r *http.Request, user string) (ListOptions, error) {
 }
 
 func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]PostWithAuthor, error) {
-	sub := sq.Select(
-		"COALESCE(revision_id, post_id) AS origin_id",
-		"MAX(revision_number) AS max_rev",
-	).From("posts").
-		Where("deleted_at IS NULL").
-		GroupBy("COALESCE(revision_id, post_id)")
-
 	query := sq.Select("p.*, u.email, u.username").
-		FromSelect(sub, "latest").
-		InnerJoin("posts p ON COALESCE(p.revision_id, p.post_id) = latest.origin_id AND p.revision_number = latest.max_rev").
+		From("posts p").
 		InnerJoin("users u ON (u.user_id = p.user_id)").
 		Where("p.deleted_at IS NULL")
 
@@ -81,11 +72,20 @@ func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]PostWithAuthor,
 		searchPattern := "%" + strings.ToLower(opts.Search) + "%"
 		query = query.Where(sq.Expr("LOWER(p.title) LIKE ?", searchPattern))
 	}
-	if opts.User != "" {
-		query = query.Where(sq.Eq{"p.user_id": opts.User})
-	}
-	if opts.Public != nil {
-		query = query.Where(sq.Eq{"p.public": *opts.Public})
+	if opts.User != "" && opts.Public == nil {
+		// Authenticated user with no explicit public filter:
+		// show their own posts (public + private) and others' public posts
+		query = query.Where(sq.Or{
+			sq.Eq{"p.user_id": opts.User},
+			sq.Eq{"p.public": true},
+		})
+	} else {
+		if opts.User != "" {
+			query = query.Where(sq.Eq{"p.user_id": opts.User})
+		}
+		if opts.Public != nil {
+			query = query.Where(sq.Eq{"p.public": *opts.Public})
+		}
 	}
 
 	if len(opts.OrderBy) > 0 {

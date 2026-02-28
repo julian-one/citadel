@@ -51,25 +51,6 @@ func ListSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	}
 }
 
-func DeleteAllSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("DeleteAllSessions called")
-
-		ctx := r.Context()
-		userId := r.PathValue("id")
-		err := session.DeleteAll(ctx, db, userId)
-		if err != nil {
-			logger.Error("Failed to delete all sessions", "error", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete all sessions"})
-			return
-		}
-
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("DeleteSession called")
@@ -82,6 +63,25 @@ func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func DeleteAllSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("DeleteAllSessions called")
+
+		ctx := r.Context()
+		userId := r.PathValue("id")
+		err := session.DeleteAll(ctx, db, userId)
+		if err != nil {
+			logger.Error("Failed to delete all sessions", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete all sessions"})
 			return
 		}
 

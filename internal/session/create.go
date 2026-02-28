@@ -9,7 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Create(
+func New(
 	ctx context.Context,
 	db *sqlx.DB,
 	userId string,

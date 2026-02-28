@@ -83,6 +83,39 @@ func Authentication(db *sqlx.DB) Middleware {
 	}
 }
 
+// OptionalAuthentication attempts to extract a session from the request.
+// If a valid token is found, the session is added to the context.
+// If no token is present or the token is invalid, the request proceeds without a session.
+func OptionalAuthentication(db *sqlx.DB) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var token string
+
+			cookie, err := r.Cookie(session.CookieName)
+			if err == nil && cookie.Value != "" {
+				token = cookie.Value
+			}
+
+			if token == "" {
+				if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+					token = strings.TrimPrefix(auth, "Bearer ")
+				}
+			}
+
+			if token != "" {
+				ctx := r.Context()
+				s, err := session.ById(ctx, db, token)
+				if err == nil {
+					ctx = context.WithValue(ctx, SessionContextKey, s)
+					r = r.WithContext(ctx)
+				}
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // Admin checks that the authenticated user has the admin role.
 // Must be used after Authentication middleware.
 func Admin(db *sqlx.DB) Middleware {

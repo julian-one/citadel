@@ -17,12 +17,12 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		logger.Info("ListPosts called")
 		ctx := r.Context()
 
-		var userID string
+		var userId string
 		if s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session); ok && s != nil {
-			userID = s.User
+			userId = s.User
 		}
 
-		opts, err := post.ParseListOptions(r, userID)
+		opts, err := post.ParseListOptions(r, userId)
 		if err != nil {
 			logger.Error("Failed to parse post list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -81,7 +81,7 @@ func GetPost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		p, err := post.ById(ctx, db, id)
+		p, err := post.ByIdWithAuthor(ctx, db, id)
 		if err != nil {
 			logger.Error("Failed to get post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -100,9 +100,33 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Info("UpdatePost called")
 
-		id := r.PathValue("id")
+		ctx := r.Context()
+		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		if !ok || s == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+			return
+		}
 
-		var req post.UpdateRequest
+		id := r.PathValue("id")
+		original, err := post.ById(ctx, db, id)
+		if err != nil {
+			logger.Error("Failed to fetch post for ownership check", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Post not found"})
+			return
+		}
+
+		if s.User != original.User {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Forbidden"})
+			return
+		}
+
+		var req post.EditableFields
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			logger.Error("Failed to decode update post request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -110,9 +134,8 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
 			return
 		}
-		req.PostId = id
 
-		newId, err := post.Update(r.Context(), db, req)
+		updated, err := post.Update(ctx, db, id, req)
 		if err != nil {
 			logger.Error("Failed to update post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -121,30 +144,12 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"post_id": newId})
-	}
-}
-
-func ListPostRevisions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("ListPostRevisions called")
-
-		id := r.PathValue("id")
-
-		revisions, err := post.ListRevisions(r.Context(), db, id)
-		if err != nil {
-			logger.Error("Failed to list post revisions", "error", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list revisions"})
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(revisions)
+		logger.Info("Post updated",
+			"post_id", id,
+			"before", original,
+			"after", updated,
+		)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -154,7 +159,32 @@ func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		ctx := r.Context()
 		id := r.PathValue("id")
-		err := post.Delete(ctx, db, id)
+
+		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		if !ok || s == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+			return
+		}
+
+		original, err := post.ById(ctx, db, id)
+		if err != nil {
+			logger.Error("Failed to fetch post for ownership check", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Post not found"})
+			return
+		}
+
+		if s.User != original.User {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Forbidden"})
+			return
+		}
+
+		err = post.Delete(ctx, db, id)
 		if err != nil {
 			logger.Error("Failed to delete post", "error", err)
 			w.Header().Set("Content-Type", "application/json")

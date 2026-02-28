@@ -143,7 +143,6 @@ func UpdateUserRole(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		// validate role
 		if !user.Role(req.Role).Valid() {
 			logger.Error("Invalid role provided", "role", req.Role)
 			w.Header().Set("Content-Type", "application/json")

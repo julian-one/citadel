@@ -19,9 +19,13 @@ func Initialize(config Config) http.Handler {
 		middleware.Logger,
 		middleware.CORS,
 	)
+	optionalChain := baseChain.Use(
+		middleware.OptionalAuthentication(config.Db),
+	)
 	protectedChain := baseChain.Use(
 		middleware.Authentication(config.Db),
 	)
+	// NOTE: Admin middleware is used as part of the protected chain
 	adminChain := protectedChain.Use(
 		middleware.Admin(config.Db),
 	)
@@ -72,12 +76,11 @@ func Initialize(config Config) http.Handler {
 	)
 
 	// Blog Posts
-	mux.Handle("GET /posts", baseChain.ThenFunc(ListPosts(config.Logger, config.Db)))
+	mux.Handle("GET /posts", optionalChain.ThenFunc(ListPosts(config.Logger, config.Db)))
 	mux.Handle("POST /posts", protectedChain.ThenFunc(CreatePost(config.Logger, config.Db)))
-	mux.Handle("GET /posts/{id}", baseChain.ThenFunc(GetPost(config.Logger, config.Db)))
+	mux.Handle("GET /posts/{id}", optionalChain.ThenFunc(GetPost(config.Logger, config.Db)))
 	mux.Handle("PATCH /posts/{id}", protectedChain.ThenFunc(UpdatePost(config.Logger, config.Db)))
 	mux.Handle("DELETE /posts/{id}", protectedChain.ThenFunc(DeletePost(config.Logger, config.Db)))
-	mux.Handle("GET /posts/{id}/revisions", baseChain.ThenFunc(ListPostRevisions(config.Logger, config.Db)))
 
 	// Pokemon
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))

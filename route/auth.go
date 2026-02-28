@@ -54,7 +54,7 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 		logger.Info("created user", slog.String("userId", userId))
 
-		s, err := session.Create(
+		s, err := session.New(
 			ctx,
 			db,
 			userId,
@@ -113,7 +113,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		s, err := session.Create(ctx, db, u.Id)
+		s, err := session.New(ctx, db, u.Id)
 		if err != nil {
 			logger.Error("failed to create session", "error", err)
 			w.Header().Set("Content-Type", "application/json")
