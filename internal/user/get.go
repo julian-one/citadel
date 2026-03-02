@@ -11,7 +11,7 @@ func ById(ctx context.Context, db *sqlx.DB, userId string) (*User, error) {
 	var u User
 	err := db.GetContext(ctx, &u, `SELECT * FROM users WHERE user_id = ?`, userId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user by ID: %w", err)
+		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
 	return &u, nil
 }

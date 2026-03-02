@@ -1,6 +1,6 @@
-FROM golang:1.24-alpine
+FROM golang:1.26-alpine
 
-RUN apk add --no-cache gcc musl-dev sqlite-dev
+RUN apk add --no-cache gcc musl-dev sqlite-dev tesseract-ocr tesseract-ocr-data-eng
 
 WORKDIR /app
 

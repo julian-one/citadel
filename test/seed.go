@@ -2,7 +2,9 @@ package test
 
 import (
 	"context"
+	"time"
 
+	"citadel/internal/recipe"
 	"citadel/internal/session"
 	"citadel/internal/user"
 
@@ -10,8 +12,9 @@ import (
 )
 
 type TestData struct {
-	Admin TestUser
-	User  TestUser
+	Admin    TestUser
+	User     TestUser
+	RecipeId string
 }
 
 type TestUser struct {
@@ -52,6 +55,28 @@ func Seed(db *sqlx.DB) *TestData {
 		panic(err)
 	}
 
+	desc := "A test recipe description"
+	cookTime := 5 * time.Minute
+	serves := uint32(1)
+	cuisine := recipe.American
+	category := recipe.Main
+	recipeId, err := recipe.Create(ctx, db, recipe.CreateRequest{
+		User:        userId,
+		Title:       "Test Recipe",
+		Description: &desc,
+		Ingredients: []recipe.Ingredient{
+			{Amount: 1.0, Unit: recipe.Cup, Item: "Water"},
+		},
+		Instructions: []string{"Boil water"},
+		CookTime:     &cookTime,
+		Serves:       &serves,
+		Cuisine:      &cuisine,
+		Category:     &category,
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	return &TestData{
 		Admin: TestUser{
 			Id:      adminId,
@@ -63,5 +88,6 @@ func Seed(db *sqlx.DB) *TestData {
 			Session: userSession.SessionId,
 			Email:   "user@test.com",
 		},
+		RecipeId: recipeId,
 	}
 }

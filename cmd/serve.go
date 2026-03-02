@@ -7,6 +7,7 @@ import (
 
 	"citadel/internal/database"
 	"citadel/internal/logging"
+	"citadel/internal/parser"
 	"citadel/route"
 
 	"github.com/spf13/cobra"
@@ -27,6 +28,11 @@ func runServe(cmd *cobra.Command, args []string) {
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("database.path", "./citadel.db")
 	viper.SetDefault("database.schema", "./schema/model.sql")
+	viper.SetDefault("server.max_upload_mb", 10)
+	viper.SetDefault("anthropic.model", "claude-sonnet-4-5-20250929")
+	viper.SetDefault("anthropic.api_key", "")
+
+	viper.BindEnv("anthropic.api_key", "ANTHROPIC_API_KEY")
 
 	// Load configuration
 	viper.SetConfigName("config")
@@ -50,10 +56,14 @@ func runServe(cmd *cobra.Command, args []string) {
 	}
 	defer db.Close()
 
+	// Initialize parser
+	claude := parser.New(viper.GetString("anthropic.api_key"), viper.GetString("anthropic.model"))
+
 	// Initialize route handlers
 	handler := route.Initialize(route.Config{
-		Db:     db,
 		Logger: logger,
+		Db:     db,
+		Parser: claude,
 	})
 
 	// Start HTTP server
