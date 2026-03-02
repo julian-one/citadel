@@ -20,7 +20,7 @@ type PostWithAuthor struct {
 }
 
 type EditableFields struct {
-	Title   string `db:"title"   json:"title"`
-	Content string `db:"content" json:"content"`
-	Public  bool   `db:"public"  json:"public"`
+	Title   *string `json:"title"`
+	Content *string `json:"content"`
+	Public  *bool   `json:"public"`
 }

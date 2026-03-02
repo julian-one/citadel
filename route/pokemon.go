@@ -7,26 +7,11 @@ import (
 	"net/http"
 	"strings"
 
+	"citadel/internal/pokemon"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/mtslzr/pokeapi-go"
-	"github.com/mtslzr/pokeapi-go/structs"
 )
-
-type Pokemon struct {
-	Id     int    `db:"pokemon_id"`
-	Name   string `db:"name"`
-	Height int    `db:"height"`
-	Weight int    `db:"weight"`
-}
-
-func toPokemon(response structs.Pokemon) Pokemon {
-	return Pokemon{
-		Id:     response.ID,
-		Name:   response.Name,
-		Weight: response.Weight,
-		Height: response.Height,
-	}
-}
 
 func exists(ctx context.Context, db *sqlx.DB, name string) bool {
 	var exists bool
@@ -38,7 +23,7 @@ func exists(ctx context.Context, db *sqlx.DB, name string) bool {
 	return exists
 }
 
-func save(ctx context.Context, db *sqlx.DB, p Pokemon) error {
+func save(ctx context.Context, db *sqlx.DB, p pokemon.Pokemon) error {
 	_, err := db.ExecContext(
 		ctx,
 		`INSERT INTO pokemon (pokemon_id, name, height, weight) VALUES (?, ?, ?, ?)`,
@@ -49,8 +34,8 @@ func save(ctx context.Context, db *sqlx.DB, p Pokemon) error {
 	return nil
 }
 
-func fetch(ctx context.Context, db *sqlx.DB, name string) (*Pokemon, error) {
-	var p Pokemon
+func fetch(ctx context.Context, db *sqlx.DB, name string) (*pokemon.Pokemon, error) {
+	var p pokemon.Pokemon
 	err := db.GetContext(
 		ctx,
 		&p,
@@ -83,7 +68,7 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		logger.Info("fetching pokemon", slog.String("name", name))
 
 		// check if pokemon exists in the database
-		var p Pokemon
+		var p pokemon.Pokemon
 		exists := exists(ctx, db, name)
 		if exists {
 			logger.Info("pokemon exists in database", slog.String("name", name))
@@ -125,7 +110,7 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		// convert to our Pokemon struct and save to the database
-		p = toPokemon(response)
+		p = pokemon.ToPokemon(response)
 		err = save(ctx, db, p)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

@@ -5,14 +5,16 @@ import (
 	"net/http"
 
 	"citadel/internal/middleware"
+	"citadel/internal/parser"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/cors"
 )
 
 type Config struct {
-	Db     *sqlx.DB
 	Logger *slog.Logger
+	Db     *sqlx.DB
+	Parser *parser.Claude
 }
 
 func Initialize(config Config) http.Handler {
@@ -76,6 +78,25 @@ func Initialize(config Config) http.Handler {
 	mux.Handle("GET /posts/{id}", optionalChain.ThenFunc(GetPost(config.Logger, config.Db)))
 	mux.Handle("PATCH /posts/{id}", protectedChain.ThenFunc(UpdatePost(config.Logger, config.Db)))
 	mux.Handle("DELETE /posts/{id}", protectedChain.ThenFunc(DeletePost(config.Logger, config.Db)))
+
+	// Recipes
+	mux.Handle("GET /recipes", protectedChain.ThenFunc(ListRecipes(config.Logger, config.Db)))
+	mux.Handle("POST /recipes", protectedChain.ThenFunc(CreateRecipe(config.Logger, config.Db)))
+	mux.Handle("GET /recipes/{id}", protectedChain.ThenFunc(GetRecipe(config.Logger, config.Db)))
+	mux.Handle(
+		"PATCH /recipes/{id}",
+		protectedChain.ThenFunc(UpdateRecipe(config.Logger, config.Db)),
+	)
+	mux.Handle(
+		"DELETE /recipes/{id}",
+		protectedChain.ThenFunc(DeleteRecipe(config.Logger, config.Db)),
+	)
+	mux.Handle(
+		"POST /recipes/scan",
+		protectedChain.ThenFunc(
+			ScanRecipe(config.Logger, config.Parser),
+		),
+	)
 
 	// Pokemon
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))
