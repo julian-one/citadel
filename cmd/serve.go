@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"citadel/internal/database"
 	"citadel/internal/logging"
@@ -15,34 +15,27 @@ import (
 )
 
 var serveCmd = &cobra.Command{
-	Use:   "serve",
-	Short: "Start the Citadel HTTP server",
-	Long:  `The serve command starts the Citadel HTTP web server`,
-	Run:   runServe,
+	Use:          "serve",
+	Short:        "Start the Citadel HTTP server",
+	Long:         `The serve command starts the Citadel HTTP web server`,
+	SilenceUsage: true,
+	RunE:         runServe,
 }
 
-func runServe(cmd *cobra.Command, args []string) {
+func init() {
+	rootCmd.AddCommand(serveCmd)
+
+	serveCmd.Flags().StringP("port", "p", "8080", "port to listen on")
+	serveCmd.Flags().String("db-path", "./citadel.db", "path to the SQLite database")
+	serveCmd.Flags().String("db-schema", "./schema/model.sql", "path to the database schema file")
+
+	_ = viper.BindPFlag("server.port", serveCmd.Flags().Lookup("port"))
+	_ = viper.BindPFlag("database.path", serveCmd.Flags().Lookup("db-path"))
+	_ = viper.BindPFlag("database.schema", serveCmd.Flags().Lookup("db-schema"))
+}
+
+func runServe(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-
-	// Set defaults
-	viper.SetDefault("server.port", "8080")
-	viper.SetDefault("database.path", "./citadel.db")
-	viper.SetDefault("database.schema", "./schema/model.sql")
-	viper.SetDefault("server.max_upload_mb", 10)
-	viper.SetDefault("anthropic.model", "claude-sonnet-4-5-20250929")
-	viper.SetDefault("anthropic.api_key", "")
-
-	viper.BindEnv("anthropic.api_key", "ANTHROPIC_API_KEY")
-
-	// Load configuration
-	viper.SetConfigName("config")
-	viper.SetConfigType("json")
-	viper.AddConfigPath(".")
-
-	if err := viper.ReadInConfig(); err != nil {
-		slog.ErrorContext(ctx, "failed to read config file", "error", err)
-		os.Exit(1)
-	}
 
 	// Initialize logger
 	logger := logging.New(slog.LevelInfo)
@@ -51,8 +44,7 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Initialize database
 	db, err := database.New(viper.GetString("database.path"), viper.GetString("database.schema"))
 	if err != nil {
-		logger.ErrorContext(ctx, "failed to connect to database", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
@@ -69,8 +61,10 @@ func runServe(cmd *cobra.Command, args []string) {
 	// Start HTTP server
 	port := viper.GetString("server.port")
 	logger.InfoContext(ctx, "Server listening", "port", port)
+
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		logger.ErrorContext(ctx, "failed to start server", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("server stopped: %w", err)
 	}
+
+	return nil
 }
