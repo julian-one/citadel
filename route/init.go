@@ -102,7 +102,7 @@ func Initialize(config Config) http.Handler {
 	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.Db)))
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://jroberts.info", "http://localhost:3000"},
+		AllowedOrigins:   []string{"https://julian-one.com", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "Cache-Control"},
 		AllowCredentials: true,
