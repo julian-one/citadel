@@ -165,3 +165,48 @@ func UpdateUserRole(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+func UpdatePassword(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
+	type Request struct {
+		NewPassword string `json:"new_password"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("UpdatePassword called")
+
+		var req Request
+		if json.NewDecoder(r.Body).Decode(&req) != nil || req.NewPassword == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+
+		ctx := r.Context()
+		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		if !ok || s == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})
+			return
+		}
+
+		id := r.PathValue("id")
+		if s.User != id {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "You can only update your own password"})
+			return
+		}
+
+		if err := user.UpdatePassword(ctx, db, id, req.NewPassword); err != nil {
+			logger.Error("Failed to update password", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update password"})
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}

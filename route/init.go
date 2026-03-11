@@ -57,6 +57,10 @@ func Initialize(config Config) http.Handler {
 	// Users (any authenticated user)
 	mux.Handle("GET /users/{id}", protectedChain.ThenFunc(GetUser(config.Logger, config.Db)))
 	mux.Handle("PATCH /users/{id}", protectedChain.ThenFunc(UpdateUser(config.Logger, config.Db)))
+	mux.Handle(
+		"PATCH /users/{id}/password",
+		protectedChain.ThenFunc(UpdatePassword(config.Logger, config.Db)),
+	)
 
 	// Sessions (admin only)
 	mux.Handle(

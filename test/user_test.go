@@ -200,3 +200,65 @@ func TestUpdateUserRole_Admin(t *testing.T) {
 
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
+
+func TestUpdatePassword_Unauthenticated(t *testing.T) {
+	req, err := http.NewRequest(
+		"PATCH",
+		server.URL+"/users/"+td.User.Id+"/password",
+		strings.NewReader(`{"new_password":"newpass123"}`),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestUpdatePassword_OtherUser(t *testing.T) {
+	req, err := http.NewRequest(
+		"PATCH",
+		server.URL+"/users/"+td.Admin.Id+"/password",
+		strings.NewReader(`{"new_password":"hacked"}`),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestUpdatePassword_Success(t *testing.T) {
+	newPassword := "updatedpass456"
+	req, err := http.NewRequest(
+		"PATCH",
+		server.URL+"/users/"+td.User.Id+"/password",
+		strings.NewReader(`{"new_password":"`+newPassword+`"}`),
+	)
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	// Verify login works with the new password
+	loginReq, err := http.NewRequest("POST", server.URL+"/login", nil)
+	require.NoError(t, err)
+	loginReq.SetBasicAuth(td.User.Email, newPassword)
+
+	loginResp, err := http.DefaultClient.Do(loginReq)
+	require.NoError(t, err)
+	defer loginResp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, loginResp.StatusCode)
+}

@@ -16,11 +16,17 @@ func ById(ctx context.Context, db *sqlx.DB, userId string) (*User, error) {
 	return &u, nil
 }
 
-func ByEmail(ctx context.Context, db *sqlx.DB, email string) (*User, error) {
+func ByEmailOrUsername(ctx context.Context, db *sqlx.DB, identifier string) (*User, error) {
 	var u User
-	err := db.GetContext(ctx, &u, `SELECT * FROM users WHERE email = ?`, email)
+	err := db.GetContext(
+		ctx,
+		&u,
+		`SELECT * FROM users WHERE email = ? OR username = ?`,
+		identifier,
+		identifier,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user by email: %w", err)
+		return nil, fmt.Errorf("failed to get user by email or username: %w", err)
 	}
 	return &u, nil
 }

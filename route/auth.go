@@ -79,7 +79,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 
 		logger.Info("handling login request")
-		email, password, ok := r.BasicAuth()
+		identifier, password, ok := r.BasicAuth()
 		if !ok {
 			logger.Info("invalid basic auth credentials")
 			w.Header().Set("Content-Type", "application/json")
@@ -87,14 +87,13 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid basic auth credentials"})
 			return
 		}
-		logger.Info("received login request", slog.String("email", email))
+		logger.Info("received login request", slog.String("identifier", identifier))
 
-		// TODO: allow login with either email or username, currently only email is supported
-		u, err := user.ByEmail(ctx, db, email)
+		u, err := user.ByEmailOrUsername(ctx, db, identifier)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid email or password"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials"})
 			return
 		}
 
@@ -106,10 +105,10 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		if !match {
-			logger.Info("invalid password for email", slog.String("email", email))
+			logger.Info("invalid password for identifier", slog.String("identifier", identifier))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid email or password"})
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials"})
 			return
 		}
 
