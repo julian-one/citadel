@@ -16,29 +16,24 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		Username string `json:"username"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("handling register request")
 		ctx := r.Context()
-
-		logger.Info("before basic auth")
 		email, password, ok := r.BasicAuth()
 		if !ok {
-			logger.Info("invalid basic auth credentials")
+			logger.Warn("invalid basic auth credentials")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid basic auth credentials"})
 			return
 		}
-		logger.Info("received register request", slog.String("email", email))
 
 		var req Request
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Info("failed to decode register request body", "error", err)
+			logger.Warn("failed to decode register request body", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
 			return
 		}
-		logger.Info("decoded register request body", slog.String("username", req.Username))
 
 		userId, err := user.Create(ctx, db, user.CreateRequest{
 			Username: req.Username,
@@ -46,13 +41,12 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			Password: password,
 		})
 		if err != nil {
-			logger.Info("failed to create user", "error", err)
+			logger.Error("failed to create user", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create user"})
 			return
 		}
-		logger.Info("created user", slog.String("userId", userId))
 
 		s, err := session.New(
 			ctx,
@@ -60,7 +54,7 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			userId,
 		)
 		if err != nil {
-			logger.Info("failed to create session", "error", err)
+			logger.Error("failed to create session", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
@@ -78,16 +72,14 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		logger.Info("handling login request")
 		identifier, password, ok := r.BasicAuth()
 		if !ok {
-			logger.Info("invalid basic auth credentials")
+			logger.Warn("invalid basic auth credentials")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid basic auth credentials"})
 			return
 		}
-		logger.Info("received login request", slog.String("identifier", identifier))
 
 		u, err := user.ByEmailOrUsername(ctx, db, identifier)
 		if err != nil {
@@ -105,7 +97,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		if !match {
-			logger.Info("invalid password for identifier", slog.String("identifier", identifier))
+			logger.Warn("invalid password attempt")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials"})
@@ -130,8 +122,6 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func Logout(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("handling logout request")
-
 		cookie, err := r.Cookie(session.CookieName)
 		if err != nil || cookie.Value == "" {
 			// don't return an error if the cookie is missing or empty, just treat it as a successful logout

@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"citadel/internal/session"
 	"citadel/internal/user"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -17,15 +19,41 @@ type contextKey string
 
 const SessionContextKey contextKey = "session"
 
-func Logger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		slog.Info("request",
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-			slog.String("remote_addr", getClientIP(r)),
-		)
-		next.ServeHTTP(w, r)
-	})
+// responseWriter wraps http.ResponseWriter to capture the status code.
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Logger returns middleware that logs each request after the handler completes,
+// including method, path, status, duration, and a generated request ID.
+func Logger(logger *slog.Logger) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			requestId := uuid.New().String()
+
+			requestLogger := logger.With(slog.String("request_id", requestId))
+
+			w.Header().Set("X-Request-ID", requestId)
+
+			rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(rw, r)
+
+			requestLogger.Info("http request completed",
+				"method", r.Method,
+				"path", r.URL.Path,
+				"remote_addr", getClientIP(r),
+				"status", rw.status,
+				"duration", time.Since(start),
+			)
+		})
+	}
 }
 
 // Authentication validates the session token from either the TOKEN cookie

@@ -19,7 +19,7 @@ type Config struct {
 
 func Initialize(config Config) http.Handler {
 	baseChain := middleware.New(
-		middleware.Logger,
+		middleware.Logger(config.Logger),
 	)
 	optionalChain := baseChain.Use(
 		middleware.OptionalAuthentication(config.Db),

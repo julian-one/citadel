@@ -12,8 +12,6 @@ import (
 
 func GetSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("GetSession called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 		s, err := session.ById(ctx, db, id)
@@ -32,13 +30,11 @@ func GetSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func ListSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("ListSessions called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 		sessions, err := session.List(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to list sessions", "error", err)
+			logger.Error("failed to list sessions", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list sessions"})
@@ -53,13 +49,11 @@ func ListSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("DeleteSession called")
-
 		ctx := r.Context()
 		sessionId := r.PathValue("id")
 		err := session.Delete(ctx, db, sessionId)
 		if err != nil {
-			logger.Error("Failed to delete session", "error", err)
+			logger.Error("failed to delete session", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete session"})
@@ -72,13 +66,11 @@ func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func DeleteAllSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("DeleteAllSessions called")
-
 		ctx := r.Context()
 		userId := r.PathValue("id")
 		err := session.DeleteAll(ctx, db, userId)
 		if err != nil {
-			logger.Error("Failed to delete all sessions", "error", err)
+			logger.Error("failed to delete all sessions", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete all sessions"})

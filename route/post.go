@@ -14,7 +14,6 @@ import (
 
 func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("ListPosts called")
 		ctx := r.Context()
 
 		var userId string
@@ -24,7 +23,7 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		opts, err := post.ParseListOptions(r, userId)
 		if err != nil {
-			logger.Error("Failed to parse post list options", "error", err)
+			logger.Warn("failed to parse post list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
@@ -33,7 +32,7 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		posts, err := post.List(ctx, db, opts)
 		if err != nil {
-			logger.Error("Failed to list posts", "error", err)
+			logger.Error("failed to list posts", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list posts"})
@@ -48,11 +47,9 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func CreatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("CreatePost called")
-
 		var req post.CreateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Error("Failed to decode create post request", "error", err)
+			logger.Warn("failed to decode create post request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
@@ -61,7 +58,7 @@ func CreatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		postId, err := post.Create(r.Context(), db, req)
 		if err != nil {
-			logger.Error("Failed to create post", "error", err)
+			logger.Error("failed to create post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create post"})
@@ -76,14 +73,12 @@ func CreatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func GetPost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("GetPost called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 
 		p, err := post.ByIdWithAuthor(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to get post", "error", err)
+			logger.Error("failed to get post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to get post"})
@@ -98,8 +93,6 @@ func GetPost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("UpdatePost called")
-
 		ctx := r.Context()
 		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
 		if !ok || s == nil {
@@ -112,7 +105,7 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		id := r.PathValue("id")
 		original, err := post.ById(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to fetch post for ownership check", "error", err)
+			logger.Error("failed to fetch post for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Post not found"})
@@ -128,35 +121,28 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		var req post.EditableFields
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Error("Failed to decode update post request", "error", err)
+			logger.Warn("failed to decode update post request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
 			return
 		}
 
-		updated, err := post.Update(ctx, db, id, req)
+		_, err = post.Update(ctx, db, id, req)
 		if err != nil {
-			logger.Error("Failed to update post", "error", err)
+			logger.Error("failed to update post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update post"})
 			return
 		}
 
-		logger.Info("Post updated",
-			"post_id", id,
-			"before", original,
-			"after", updated,
-		)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("DeletePost called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 
@@ -170,7 +156,7 @@ func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		original, err := post.ById(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to fetch post for ownership check", "error", err)
+			logger.Error("failed to fetch post for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Post not found"})
@@ -186,7 +172,7 @@ func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		err = post.Delete(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to delete post", "error", err)
+			logger.Error("failed to delete post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete post"})
