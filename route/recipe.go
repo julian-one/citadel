@@ -16,12 +16,11 @@ import (
 
 func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("ListRecipes called")
 		ctx := r.Context()
 
 		opts, err := recipe.ParseListOptions(r)
 		if err != nil {
-			logger.Error("Failed to parse recipe list options", "error", err)
+			logger.Warn("failed to parse recipe list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
@@ -30,7 +29,7 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		recipes, err := recipe.List(ctx, db, opts)
 		if err != nil {
-			logger.Error("Failed to list recipes", "error", err)
+			logger.Error("failed to list recipes", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list recipes"})
@@ -45,8 +44,6 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("CreateRecipe called")
-
 		ctx := r.Context()
 		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
 		if !ok || s == nil {
@@ -58,7 +55,7 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		var req recipe.CreateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Error("Failed to decode create recipe request", "error", err)
+			logger.Warn("failed to decode create recipe request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
@@ -70,7 +67,7 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		recipeId, err := recipe.Create(ctx, db, req)
 		if err != nil {
-			logger.Error("Failed to create recipe", "error", err)
+			logger.Error("failed to create recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe"})
@@ -85,8 +82,6 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func GetRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("GetRecipe called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 
@@ -98,7 +93,7 @@ func GetRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 				json.NewEncoder(w).Encode(map[string]string{"error": "Recipe not found"})
 				return
 			}
-			logger.Error("Failed to get recipe", "error", err)
+			logger.Error("failed to get recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to get recipe"})
@@ -113,8 +108,6 @@ func GetRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("UpdateRecipe called")
-
 		ctx := r.Context()
 		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
 		if !ok || s == nil {
@@ -127,7 +120,7 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		id := r.PathValue("id")
 		original, err := recipe.ById(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to fetch recipe for ownership check", "error", err)
+			logger.Error("failed to fetch recipe for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Recipe not found"})
@@ -143,7 +136,7 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		var req recipe.EditableFields
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			logger.Error("Failed to decode update recipe request", "error", err)
+			logger.Warn("failed to decode update recipe request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
@@ -152,35 +145,19 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		err = recipe.Update(ctx, db, id, req)
 		if err != nil {
-			logger.Error("Failed to update recipe", "error", err)
+			logger.Error("failed to update recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update recipe"})
 			return
 		}
 
-		updated, err := recipe.ById(ctx, db, id)
-		if err != nil {
-			logger.Error("Failed to fetch updated recipe", "error", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to fetch updated recipe"})
-			return
-		}
-
-		logger.Info("Recipe updated",
-			"recipe_id", id,
-			"before", original,
-			"after", updated,
-		)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 func DeleteRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("DeleteRecipe called")
-
 		ctx := r.Context()
 		id := r.PathValue("id")
 
@@ -194,7 +171,7 @@ func DeleteRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		original, err := recipe.ById(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to fetch recipe for ownership check", "error", err)
+			logger.Error("failed to fetch recipe for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Recipe not found"})
@@ -210,7 +187,7 @@ func DeleteRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		err = recipe.Delete(ctx, db, id)
 		if err != nil {
-			logger.Error("Failed to delete recipe", "error", err)
+			logger.Error("failed to delete recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to delete recipe"})

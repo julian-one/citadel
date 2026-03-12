@@ -65,13 +65,11 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		// case insensitive name
 		name = strings.ToLower(name)
 		name = strings.ReplaceAll(name, " ", "-")
-		logger.Info("fetching pokemon", slog.String("name", name))
 
 		// check if pokemon exists in the database
 		var p pokemon.Pokemon
 		exists := exists(ctx, db, name)
 		if exists {
-			logger.Info("pokemon exists in database", slog.String("name", name))
 
 			fetched, err := fetch(ctx, db, name)
 			if err != nil {
@@ -88,7 +86,7 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		// fetch from the pokeapi
-		logger.Info("fetching from pokeapi", slog.String("name", name))
+		logger.Info("fetching from pokeapi", "name", name)
 		response, err := pokeapi.Pokemon(name)
 		if err != nil {
 			if strings.Contains(
@@ -101,7 +99,7 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 					Encode(map[string]string{"error": "pokemon not found"})
 				return
 			}
-			logger.Error("failed to fetch pokemon", "err", err)
+			logger.Error("failed to fetch pokemon", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).

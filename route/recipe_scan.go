@@ -18,7 +18,6 @@ func ScanRecipe(
 	parser *parser.Claude,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("ScanRecipe called")
 		ctx := r.Context()
 
 		// Limit total request body to 20 MiB
@@ -81,10 +80,10 @@ func ScanRecipe(
 		}
 		tmp.Close()
 
-		logger.Info("running OCR", "file", header.Filename)
+		logger.Info("running ocr", "file", header.Filename)
 		text, err := ocr.Extract(ctx, tmp.Name())
 		if err != nil {
-			logger.Error("OCR failed", "error", err)
+			logger.Error("ocr failed", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).
@@ -100,12 +99,12 @@ func ScanRecipe(
 			return
 		}
 
-		logger.Info("OCR complete", "text_length", len(text))
+		logger.Info("ocr complete", "text_length", len(text))
 
-		logger.Info("parsing recipe with Claude")
+		logger.Info("parsing recipe with claude")
 		recipe, err := parser.Parse(text)
 		if err != nil {
-			logger.Error("Claude parsing failed", "error", err)
+			logger.Error("claude parsing failed", "error", err)
 			if strings.Contains(err.Error(), "failed to parse recipe JSON") {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnprocessableEntity)

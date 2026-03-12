@@ -35,8 +35,6 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-
 	// Initialize logger
 	logger := logging.New(slog.LevelInfo)
 	slog.SetDefault(logger)
@@ -60,7 +58,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// Start HTTP server
 	port := viper.GetString("server.port")
-	logger.InfoContext(ctx, "Server listening", "port", port)
+	logger.Info("server listening", "port", port)
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		return fmt.Errorf("server stopped: %w", err)
