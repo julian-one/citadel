@@ -69,7 +69,6 @@ func (s *scanResult) toRecipe() *recipe.Recipe {
 	return r
 }
 
-
 //go:embed prompt.txt
 var defaultPrompt string
 

@@ -15,7 +15,7 @@ Rules:
   "category": "string or null"
 }
 - amount must be a JSON number (e.g. 1.5, 2, 0.25). For fractional amounts like "1/2", convert to decimal (0.5). For ingredients without an amount, set amount to 0
-- unit must be one of: tsp, tbsp, cup, fl oz, pt, qt, gal, ml, l, pinch, dash, oz, lb, g, kg. For ingredients without a unit, set unit to an empty string
+- unit must be one of: tsp, tbsp, cup, fl oz, pt, qt, gal, ml, l, pinch, dash, oz, lb, g, kg, whole. Use "whole" for countable items without a measurement unit (e.g. "2 eggs" → amount: 2, unit: "whole", item: "eggs"). For ingredients without a unit or amount, set unit to an empty string
 - Omit cook_time_minutes and serves if not present in the text — do not guess
 - cuisine should be one of: American, Chinese, French, Indian, Italian, Japanese, Vietnamese — or null if unclear
 - category should be one of: Appetizer, Main, Dessert, Beverage, Side — or null if unclear

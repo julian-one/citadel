@@ -1,14 +1,13 @@
 package test
 
 import (
+	"flag"
 	"io"
 	"log/slog"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"flag"
 
 	"citadel/route"
 

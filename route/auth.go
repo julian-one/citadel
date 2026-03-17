@@ -5,29 +5,32 @@ import (
 	"log/slog"
 	"net/http"
 
+	"citadel/internal/email"
 	"citadel/internal/session"
+	"citadel/internal/token"
 	"citadel/internal/user"
 
 	"github.com/jmoiron/sqlx"
 )
 
-func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
+func Register(
+	logger *slog.Logger,
+	db *sqlx.DB,
+	emailClient *email.Client,
+	signingKey string,
+) http.HandlerFunc {
 	type Request struct {
 		Username string `json:"username"`
+		Email    string `json:"email"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		email, password, ok := r.BasicAuth()
-		if !ok {
-			logger.Warn("invalid basic auth credentials")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid basic auth credentials"})
-			return
-		}
 
-		var req Request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var request Request
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&request)
+		if err != nil {
 			logger.Warn("failed to decode register request body", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
@@ -35,35 +38,196 @@ func Register(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		logger = logger.With("username", request.Username, "email", request.Email)
+		if request.Username == "" || request.Email == "" {
+			logger.Warn("username and email are required")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Username and email are required"})
+			return
+		}
+
+		// Validate username uniqueness
+		usernameTaken, err := user.IsUsernameTaken(ctx, db, request.Username)
+		if err != nil {
+			logger.Error("failed to check username", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Failed to check username availability"})
+			return
+		}
+		if usernameTaken {
+			logger.Warn("username is already taken")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Username is already taken"})
+			return
+		}
+
+		// Validate email uniqueness
+		emailTaken, err := user.IsEmailTaken(ctx, db, request.Email)
+		if err != nil {
+			logger.Error("failed to check email", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Failed to check email availability"})
+			return
+		}
+		if emailTaken {
+			logger.Warn("email is already taken")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Email is already taken"})
+			return
+		}
+
+		// Create signed verification token
+		t, err := token.Create(signingKey, request.Username, request.Email)
+		if err != nil {
+			logger.Error("failed to create verification token", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to process registration"})
+			return
+		}
+
+		// Send verification email
+		err = emailClient.SendVerification(
+			request.Email,
+			request.Username,
+			emailClient.VerificationURL(t),
+		)
+		if err != nil {
+			logger.Error("failed to send verification email", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Failed to send verification email"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"email":   request.Email,
+			"message": "Verification email sent",
+		})
+	}
+}
+
+func VerifyRegistration(logger *slog.Logger, signingKey string) http.HandlerFunc {
+	type Request struct {
+		Token string `json:"token"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		var request Request
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&request)
+		if err != nil {
+			logger.Warn("failed to decode verify-registration request body", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+		if request.Token == "" {
+			logger.Warn("token is required")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Token is required"})
+			return
+		}
+
+		// Validate token
+		claims, err := token.Verify(signingKey, request.Token)
+		if err != nil {
+			logger.Warn("verification failed", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Invalid or expired verification token"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]any{
+			"valid":    true,
+			"token":    request.Token,
+			"username": claims.Username,
+		})
+	}
+}
+
+func CompleteRegistration(logger *slog.Logger, db *sqlx.DB, signingKey string) http.HandlerFunc {
+	type Request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var request Request
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&request)
+		if err != nil {
+			logger.Warn("failed to decode complete-registration request body", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+		if request.Token == "" || request.Password == "" {
+			logger.Warn("token and password are required")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Token and password are required"})
+			return
+		}
+
+		// Validate token
+		claims, err := token.Verify(signingKey, request.Token)
+		if err != nil {
+			logger.Warn("complete-registration token verification failed", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Invalid or expired verification token"})
+			return
+		}
+
 		userId, err := user.Create(ctx, db, user.CreateRequest{
-			Username: req.Username,
-			Email:    email,
-			Password: password,
+			Username: claims.Username,
+			Email:    claims.Email,
+			Password: request.Password,
 		})
 		if err != nil {
 			logger.Error("failed to create user", "error", err)
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create user"})
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Username or email is already taken"})
 			return
 		}
 
-		s, err := session.New(
-			ctx,
-			db,
-			userId,
-		)
+		s, err := session.Create(ctx, db, userId)
 		if err != nil {
-			logger.Error("failed to create session", "error", err)
+			logger.Error("failed to create session after verification", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Account created but failed to create session"})
 			return
 		}
 		session.SetSessionCookie(w, s.SessionId)
 
+		logger.Info("email verified and user created", "user_id", userId)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(s)
 	}
 }
@@ -81,6 +245,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		// Get user by email or username in order to compare the provided password
 		u, err := user.ByEmailOrUsername(ctx, db, identifier)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
@@ -104,7 +269,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		s, err := session.New(ctx, db, u.Id)
+		s, err := session.Create(ctx, db, u.Id)
 		if err != nil {
 			logger.Error("failed to create session", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -124,12 +289,12 @@ func Logout(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(session.CookieName)
 		if err != nil || cookie.Value == "" {
-			// don't return an error if the cookie is missing or empty, just treat it as a successful logout
+			// Don't return an error if the cookie is missing or empty, just treat it as a successful logout
 			logger.Info("no session cookie found, treating as successful logout")
 		} else {
 			err = session.Delete(r.Context(), db, cookie.Value)
 			if err != nil {
-				// don't return an error if session deletion fails, just log it and continue with clearing the cookie
+				// Don't return an error if session deletion fails, just log it and continue with clearing the cookie
 				logger.Error("failed to delete session", "error", err)
 			}
 		}

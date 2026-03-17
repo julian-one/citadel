@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"citadel/internal/database"
+	"citadel/internal/email"
 	"citadel/internal/logging"
 	"citadel/internal/parser"
 	"citadel/route"
@@ -15,11 +16,10 @@ import (
 )
 
 var serveCmd = &cobra.Command{
-	Use:          "serve",
-	Short:        "Start the Citadel HTTP server",
-	Long:         `The serve command starts the Citadel HTTP web server`,
-	SilenceUsage: true,
-	RunE:         runServe,
+	Use:   "serve",
+	Short: "Start the Citadel HTTP server",
+	Long:  `The serve command starts the Citadel HTTP web server`,
+	RunE:  runServe,
 }
 
 func init() {
@@ -49,11 +49,22 @@ func runServe(cmd *cobra.Command, args []string) error {
 	// Initialize parser
 	claude := parser.New(viper.GetString("anthropic.api_key"), viper.GetString("anthropic.model"))
 
+	// Initialize email client
+	baseURL := viper.GetString("server.base_url")
+	emailClient := email.New(
+		viper.GetString("resend.api_key"),
+		viper.GetString("resend.from_email"),
+		baseURL,
+	)
+
 	// Initialize route handlers
+	signingKey := viper.GetString("hmac.signing_key")
 	handler := route.Initialize(route.Config{
-		Logger: logger,
-		Db:     db,
-		Parser: claude,
+		Logger:     logger,
+		Db:         db,
+		Parser:     claude,
+		Email:      emailClient,
+		SigningKey: signingKey,
 	})
 
 	// Start HTTP server

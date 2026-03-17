@@ -13,7 +13,7 @@ func UpdatePassword(
 	userId string,
 	newPassword string,
 ) error {
-	h, s, err := hash(newPassword, nil)
+	h, s, err := Hash(newPassword, nil)
 	if err != nil {
 		return fmt.Errorf("failed to hash new password: %w", err)
 	}

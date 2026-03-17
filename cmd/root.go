@@ -38,6 +38,12 @@ func init() {
 	if err := viper.BindEnv("anthropic.api_key", "ANTHROPIC_API_KEY"); err != nil {
 		slog.Error("failed to bind env", "key", "anthropic.api_key", "error", err)
 	}
+	if err := viper.BindEnv("resend.api_key", "RESEND_API_KEY"); err != nil {
+		slog.Error("failed to bind env", "key", "resend.api_key", "error", err)
+	}
+	if err := viper.BindEnv("hmac.signing_key", "HMAC_SIGNING_KEY"); err != nil {
+		slog.Error("failed to bind env", "key", "hmac.signing_key", "error", err)
+	}
 }
 
 func initializeConfig() error {
@@ -47,6 +53,10 @@ func initializeConfig() error {
 	viper.SetDefault("server.max_upload_mb", 10)
 	viper.SetDefault("anthropic.model", "claude-sonnet-4-5-20250929")
 	viper.SetDefault("anthropic.api_key", "")
+	viper.SetDefault("resend.api_key", "")
+	viper.SetDefault("hmac.signing_key", "")
+	viper.SetDefault("resend.from_email", "noreply@contact.julian-one.com")
+	viper.SetDefault("server.base_url", "https://julian-one.com")
 
 	viper.SetEnvPrefix("CITADEL")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))

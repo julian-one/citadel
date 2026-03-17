@@ -88,11 +88,13 @@ const (
 	Lb Unit = "lb"
 	G  Unit = "g"
 	Kg Unit = "kg"
+	// count
+	Whole Unit = "whole"
 )
 
 func (u Unit) Valid() bool {
 	switch u {
-	case Tsp, Tbsp, Cup, FlOz, Pt, Qt, Gal, Oz, Lb, G, Kg, Ml, L, Pinch, Dash:
+	case Tsp, Tbsp, Cup, FlOz, Pt, Qt, Gal, Oz, Lb, G, Kg, Ml, L, Pinch, Dash, Whole:
 		return true
 	default:
 		return false

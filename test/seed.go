@@ -44,13 +44,12 @@ func Seed(db *sqlx.DB) *TestData {
 	if err != nil {
 		panic(err)
 	}
-
-	adminSession, err := session.New(ctx, db, adminId)
+	adminSession, err := session.Create(ctx, db, adminId)
 	if err != nil {
 		panic(err)
 	}
 
-	userSession, err := session.New(ctx, db, userId)
+	userSession, err := session.Create(ctx, db, userId)
 	if err != nil {
 		panic(err)
 	}
@@ -76,6 +75,12 @@ func Seed(db *sqlx.DB) *TestData {
 	if err != nil {
 		panic(err)
 	}
+
+	// Seed a pokemon for search tests
+	db.MustExec(
+		`INSERT INTO pokemon (pokemon_id, name, height, weight) VALUES (?, ?, ?, ?)`,
+		1, "bulbasaur", 7, 69,
+	)
 
 	return &TestData{
 		Admin: TestUser{

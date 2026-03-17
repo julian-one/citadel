@@ -41,3 +41,14 @@ func IsUsernameTaken(ctx context.Context, db *sqlx.DB, username string) (bool, e
 	}
 	return exists, nil
 }
+
+func IsEmailTaken(ctx context.Context, db *sqlx.DB, email string) (bool, error) {
+	var exists bool
+	err := db.GetContext(ctx, &exists,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)`,
+		email)
+	if err != nil {
+		return false, fmt.Errorf("failed to check email: %w", err)
+	}
+	return exists, nil
+}

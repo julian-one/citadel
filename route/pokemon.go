@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -13,46 +12,10 @@ import (
 	"github.com/mtslzr/pokeapi-go"
 )
 
-func exists(ctx context.Context, db *sqlx.DB, name string) bool {
-	var exists bool
-	err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM pokemon WHERE name = ?)`, name).
-		Scan(&exists)
-	if err != nil {
-		return false
-	}
-	return exists
-}
-
-func save(ctx context.Context, db *sqlx.DB, p pokemon.Pokemon) error {
-	_, err := db.ExecContext(
-		ctx,
-		`INSERT INTO pokemon (pokemon_id, name, height, weight) VALUES (?, ?, ?, ?)`,
-		p.Id, p.Name, p.Height, p.Weight)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func fetch(ctx context.Context, db *sqlx.DB, name string) (*pokemon.Pokemon, error) {
-	var p pokemon.Pokemon
-	err := db.GetContext(
-		ctx,
-		&p,
-		`SELECT pokemon_id, name, height, weight FROM pokemon WHERE name = ?`,
-		name,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
 func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// get the name from a query parameter
 		name := r.URL.Query().Get("name")
 		if name == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -61,17 +24,14 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 				Encode(map[string]string{"error": "name query parameter is required"})
 			return
 		}
-
-		// case insensitive name
 		name = strings.ToLower(name)
 		name = strings.ReplaceAll(name, " ", "-")
 
 		// check if pokemon exists in the database
 		var p pokemon.Pokemon
-		exists := exists(ctx, db, name)
+		exists := pokemon.Exists(ctx, db, name)
 		if exists {
-
-			fetched, err := fetch(ctx, db, name)
+			fetched, err := pokemon.ByName(ctx, db, name)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Header().Set("Content-Type", "application/json")
@@ -107,15 +67,17 @@ func SearchPokemon(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		// convert to our Pokemon struct and save to the database
-		p = pokemon.ToPokemon(response)
-		err = save(ctx, db, p)
+		// save to the database
+		created, err := pokemon.Create(ctx, db, response)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).
 				Encode(map[string]string{"error": "failed to save pokemon data"})
 			return
+		}
+		if created != nil {
+			p = *created
 		}
 
 		w.WriteHeader(http.StatusOK)

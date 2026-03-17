@@ -14,6 +14,8 @@ import (
 
 func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		opts, err := user.ParseListOptions(r)
 		if err != nil {
 			logger.Warn("failed to parse user list options", "error", err)
@@ -23,7 +25,6 @@ func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		ctx := r.Context()
 		users, err := user.List(ctx, db, opts)
 		if err != nil {
 			logger.Error("failed to list users", "error", err)
@@ -42,6 +43,7 @@ func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func GetUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
 		userId := r.PathValue("id")
 		u, err := user.ById(ctx, db, userId)
 		if err != nil {

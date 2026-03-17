@@ -14,8 +14,8 @@ type CreateRequest struct {
 	Password string `json:"password"`
 }
 
-func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, error) {
-	h, s, err := hash(request.Password, nil)
+func Create(ctx context.Context, db sqlx.ExecerContext, request CreateRequest) (string, error) {
+	h, s, err := Hash(request.Password, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
