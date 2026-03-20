@@ -63,7 +63,6 @@ func Initialize(config Config) http.Handler {
 	// Sessions
 	mux.Handle("GET /sessions/{id}", baseChain.ThenFunc(GetSession(config.Logger, config.Db)))
 
-	// TODO: Should these be optionally authenticated?
 	// Recipes
 	mux.Handle("GET /recipes", baseChain.ThenFunc(ListRecipes(config.Logger, config.Db)))
 	mux.Handle("GET /recipes/{id}", baseChain.ThenFunc(GetRecipe(config.Logger, config.Db)))
