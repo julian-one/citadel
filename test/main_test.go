@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 
 	// Initialize the server with the test database and logger
 	handler := route.Initialize(route.Config{
-		Db:     db,
+		DB:     db,
 		Logger: logger,
 	})
 	server = httptest.NewServer(handler)

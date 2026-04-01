@@ -16,12 +16,12 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		var userId string
+		var userID string
 		if s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session); ok && s != nil {
-			userId = s.User
+			userID = s.User
 		}
 
-		opts, err := post.ParseListOptions(r, userId)
+		opts, err := post.ParseListOptions(r, userID)
 		if err != nil {
 			logger.Warn("failed to parse post list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -56,7 +56,7 @@ func CreatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		postId, err := post.Create(r.Context(), db, req)
+		postID, err := post.Create(r.Context(), db, req)
 		if err != nil {
 			logger.Error("failed to create post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -67,7 +67,7 @@ func CreatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"post_id": postId})
+		json.NewEncoder(w).Encode(map[string]string{"post_id": postID})
 	}
 }
 
@@ -120,7 +120,8 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		var req post.EditableFields
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err = json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
 			logger.Warn("failed to decode update post request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)

@@ -200,7 +200,7 @@ func CompleteRegistration(logger *slog.Logger, db *sqlx.DB, signingKey string) h
 			return
 		}
 
-		userId, err := user.Create(ctx, db, user.CreateRequest{
+		userID, err := user.Create(ctx, db, user.CreateRequest{
 			Username: claims.Username,
 			Email:    claims.Email,
 			Password: request.Password,
@@ -214,7 +214,7 @@ func CompleteRegistration(logger *slog.Logger, db *sqlx.DB, signingKey string) h
 			return
 		}
 
-		s, err := session.Create(ctx, db, userId)
+		s, err := session.Create(ctx, db, userID)
 		if err != nil {
 			logger.Error("failed to create session after verification", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -225,7 +225,7 @@ func CompleteRegistration(logger *slog.Logger, db *sqlx.DB, signingKey string) h
 		}
 		session.SetSessionCookie(w, s.SessionId)
 
-		logger.Info("email verified and user created", "user_id", userId)
+		logger.Info("email verified and user created", "user_id", userID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(s)

@@ -61,7 +61,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	signingKey := viper.GetString("hmac.signing_key")
 	handler := route.Initialize(route.Config{
 		Logger:     logger,
-		Db:         db,
+		DB:         db,
 		Parser:     claude,
 		Email:      emailClient,
 		SigningKey: signingKey,

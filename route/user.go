@@ -44,8 +44,8 @@ func GetUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		userId := r.PathValue("id")
-		u, err := user.ById(ctx, db, userId)
+		userID := r.PathValue("id")
+		u, err := user.ById(ctx, db, userID)
 		if err != nil {
 			logger.Error("failed to get user", "error", err)
 			w.Header().Set("Content-Type", "application/json")
