@@ -23,9 +23,9 @@ func BookmarkRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipeId := r.PathValue("id")
+		recipeID := r.PathValue("id")
 
-		err := bookmark.Add(ctx, db, s.User, recipeId)
+		err := bookmark.Add(ctx, db, s.User, recipeID)
 		if err != nil {
 			logger.Error("failed to bookmark recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -51,9 +51,9 @@ func DeleteRecipeBookmark(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipeId := r.PathValue("id")
+		recipeID := r.PathValue("id")
 
-		err := bookmark.Delete(ctx, db, s.User, recipeId)
+		err := bookmark.Delete(ctx, db, s.User, recipeID)
 		if err != nil {
 			logger.Error("failed to unbookmark recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -77,9 +77,9 @@ func GetBookmarkStatus(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipeId := r.PathValue("id")
+		recipeID := r.PathValue("id")
 
-		exists, err := bookmark.Exists(ctx, db, s.User, recipeId)
+		exists, err := bookmark.Exists(ctx, db, s.User, recipeID)
 		if err != nil {
 			logger.Error("failed to check bookmark status", "error", err)
 			w.Header().Set("Content-Type", "application/json")

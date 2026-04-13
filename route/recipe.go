@@ -18,7 +18,12 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		opts, err := recipe.ParseListOptions(r)
+		var userID string
+		if s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session); ok && s != nil {
+			userID = s.User
+		}
+
+		opts, err := recipe.ParseListOptions(r, userID)
 		if err != nil {
 			logger.Warn("failed to parse recipe list options", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -27,7 +32,7 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipes, err := recipe.List(ctx, db, opts)
+		items, err := recipe.List(ctx, db, opts)
 		if err != nil {
 			logger.Error("failed to list recipes", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -36,9 +41,21 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		total, err := recipe.Count(ctx, db, opts)
+		if err != nil {
+			logger.Error("failed to count recipes", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list recipes"})
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(recipes)
+		json.NewEncoder(w).Encode(struct {
+			Items []recipe.Recipe `json:"items"`
+			Total int             `json:"total"`
+		}{items, total})
 	}
 }
 
@@ -65,7 +82,7 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		// Set the user from the session to ensure the recipe is associated with the authenticated user
 		req.User = s.User
 
-		recipeId, err := recipe.Create(ctx, db, req)
+		recipeID, err := recipe.Create(ctx, db, req)
 		if err != nil {
 			logger.Error("failed to create recipe", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -76,7 +93,7 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"recipe_id": recipeId})
+		json.NewEncoder(w).Encode(map[string]string{"recipe_id": recipeID})
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"citadel/internal/database"
@@ -13,31 +15,22 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func isValidColumn(column string) bool {
-	validColumns := map[string]bool{
-		"recipe_id":  true,
-		"user_id":    true,
-		"title":      true,
-		"cuisine":    true,
-		"category":   true,
-		"created_at": true,
-		"updated_at": true,
-	}
-	return validColumns[column]
-}
-
 type ListOptions struct {
-	Search   string
-	User     string
-	Cuisine  string
-	Category string
-	OrderBy  []database.OrderBy
+	Search         string
+	Cuisine        string
+	Category       string
+	Bookmarks      bool
+	User           string
+	IncludeDeleted bool
+	OrderBy        []database.Order
+	Pagination     database.Pagination
 }
 
-func ParseListOptions(r *http.Request) (ListOptions, error) {
+func ParseListOptions(r *http.Request, user string) (ListOptions, error) {
 	query := r.URL.Query()
 
 	var opts ListOptions
+	opts.User = user
 
 	if search := query.Get("search"); search != "" {
 		opts.Search = search
@@ -51,81 +44,133 @@ func ParseListOptions(r *http.Request) (ListOptions, error) {
 		opts.Category = category
 	}
 
-	if orderBy := query.Get("order_by"); orderBy != "" {
-		parsed, err := database.ParseOrderBy(orderBy)
+	if bookmarks := query.Get("bookmarks"); bookmarks != "" {
+		b, err := strconv.ParseBool(bookmarks)
 		if err != nil {
-			return opts, err
+			return opts, fmt.Errorf("invalid bookmarks value: %s (must be 'true' or 'false')", bookmarks)
 		}
-		opts.OrderBy = parsed
+		opts.Bookmarks = b
 	}
 
-	return opts, nil
+	parsed, err := database.ParseOrder(query.Get("order_by"))
+	if err != nil {
+		return opts, err
+	}
+	opts.OrderBy = parsed
+
+	pagination, err := database.ParsePagination(query.Get("limit"), query.Get("offset"))
+	if err != nil {
+		return opts, err
+	}
+	opts.Pagination = pagination
+
+	return opts, opts.validate()
 }
 
-func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) {
-	queryBuilder := sq.Select("r.*").
-		Column("(SELECT json_group_array(json_object('amount', amount, 'unit', unit, 'item', item)) FROM ingredients WHERE recipe_id = r.recipe_id) AS ingredients_json").
-		Column("(SELECT json_group_array(instruction) FROM instructions WHERE recipe_id = r.recipe_id ORDER BY step_number ASC) AS instructions_json").
-		From("recipes r").
-		Where("r.deleted_at IS NULL")
+func (opts ListOptions) validate() error {
+	if len(opts.OrderBy) == 0 {
+		return nil
+	}
+
+	t := reflect.TypeFor[Recipe]()
+	validColumns := make(map[string]bool, t.NumField())
+	for field := range t.Fields() {
+		if tag := field.Tag.Get("db"); tag != "" && tag != "-" {
+			validColumns[tag] = true
+		}
+	}
+
+	for _, o := range opts.OrderBy {
+		if !validColumns[o.Column] {
+			return fmt.Errorf("invalid column name: %s", o.Column)
+		}
+	}
+	return nil
+}
+
+func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
+	if !opts.IncludeDeleted {
+		q = q.Where("r.deleted_at IS NULL")
+	}
 
 	if opts.Search != "" {
 		searchPattern := "%" + strings.ToLower(opts.Search) + "%"
-		queryBuilder = queryBuilder.Where(sq.Expr("LOWER(r.title) LIKE ?", searchPattern))
+		q = q.Where(sq.Expr("LOWER(r.title) LIKE ?", searchPattern))
 	}
-
 	if opts.Cuisine != "" {
-		queryBuilder = queryBuilder.Where(sq.Eq{"r.cuisine": opts.Cuisine})
+		q = q.Where(sq.Eq{"r.cuisine": opts.Cuisine})
+	}
+	if opts.Category != "" {
+		q = q.Where(sq.Eq{"r.category": opts.Category})
+	}
+	if opts.Bookmarks && opts.User != "" {
+		q = q.InnerJoin("recipe_bookmarks b ON (b.recipe_id = r.recipe_id AND b.user_id = ?)", opts.User)
 	}
 
-	if opts.Category != "" {
-		queryBuilder = queryBuilder.Where(sq.Eq{"r.category": opts.Category})
+	return q
+}
+
+func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
+	q := applyFilters(database.QB.Select("COUNT(*)").From("recipes r"), opts)
+
+	query, args, err := q.ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("failed to build count query: %w", err)
 	}
+
+	var total int
+	if err = db.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
+		return 0, fmt.Errorf("failed to count recipes: %w", err)
+	}
+
+	return total, nil
+}
+
+func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) {
+	q := applyFilters(
+		database.QB.Select("r.*").
+			Column("(SELECT json_group_array(json_object('amount', amount, 'unit', unit, 'item', item)) FROM ingredients WHERE recipe_id = r.recipe_id) AS ingredients_json").
+			Column("(SELECT json_group_array(instruction) FROM instructions WHERE recipe_id = r.recipe_id ORDER BY step_number ASC) AS instructions_json").
+			From("recipes r"),
+		opts,
+	)
 
 	if len(opts.OrderBy) > 0 {
 		for _, o := range opts.OrderBy {
-			if !o.Order.Valid() {
-				return nil, fmt.Errorf("invalid order direction: %s", o.Order)
-			}
-
-			if !isValidColumn(o.Column) {
-				return nil, fmt.Errorf("invalid column name: %s", o.Column)
-			}
-
-			queryBuilder = queryBuilder.OrderBy(fmt.Sprintf("r.%s %s", o.Column, o.Order))
+			q = q.OrderBy(fmt.Sprintf("r.%s %s", o.Column, o.Direction))
 		}
 	} else {
-		queryBuilder = queryBuilder.OrderBy("r.created_at DESC")
+		q = q.OrderBy("r.created_at DESC")
 	}
 
-	sql, args, err := queryBuilder.PlaceholderFormat(sq.Question).ToSql()
+	q = q.Limit(uint64(opts.Pagination.Limit)).Offset(uint64(opts.Pagination.Offset))
+
+	query, args, err := q.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	var rows []RecipeRow
-	err = db.SelectContext(ctx, &rows, sql, args...)
-	if err != nil {
+	rows := []recipeRow{}
+	if err = db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}
 
 	recipes := make([]Recipe, len(rows))
 	for i, row := range rows {
 		if len(row.RawIngredients) > 0 {
-			if err := json.Unmarshal(row.RawIngredients, &row.Recipe.Ingredients); err != nil {
+			if err := json.Unmarshal(row.RawIngredients, &row.Ingredients); err != nil {
 				return nil, fmt.Errorf(
 					"failed to unmarshal ingredients for recipe %s: %w",
-					row.Recipe.Id,
+					row.ID,
 					err,
 				)
 			}
 		}
-
 		if len(row.RawInstructions) > 0 {
-			if err := json.Unmarshal(row.RawInstructions, &row.Recipe.Instructions); err != nil {
+			if err := json.Unmarshal(row.RawInstructions, &row.Instructions); err != nil {
 				return nil, fmt.Errorf(
 					"failed to unmarshal instructions for recipe %s: %w",
-					row.Recipe.Id,
+					row.ID,
 					err,
 				)
 			}

@@ -9,7 +9,7 @@ import (
 )
 
 func List(ctx context.Context, db *sqlx.DB, userId string) ([]Session, error) {
-	var s []Session
+	s := []Session{}
 
 	query, args, err := sq.Select("*").
 		From("sessions").
@@ -23,6 +23,9 @@ func List(ctx context.Context, db *sqlx.DB, userId string) ([]Session, error) {
 	err = db.SelectContext(ctx, &s, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list session: %w", err)
+	}
+	if s == nil {
+		s = []Session{}
 	}
 
 	return s, nil

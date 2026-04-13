@@ -34,9 +34,21 @@ func ListUsers(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		total, err := user.Count(ctx, db, opts)
+		if err != nil {
+			logger.Error("failed to count users", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list users"})
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(users)
+		json.NewEncoder(w).Encode(struct {
+			Items []user.User `json:"items"`
+			Total int         `json:"total"`
+		}{users, total})
 	}
 }
 

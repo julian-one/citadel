@@ -12,7 +12,7 @@ import (
 func Update(
 	ctx context.Context,
 	db *sqlx.DB,
-	recipeId string,
+	recipeID string,
 	edits EditableFields,
 ) error {
 	tx, err := db.Beginx()
@@ -23,7 +23,7 @@ func Update(
 
 	query := sq.Update("recipes").
 		Set("updated_at", sq.Expr("datetime('now')")).
-		Where(sq.Eq{"recipe_id": recipeId}).
+		Where(sq.Eq{"recipe_id": recipeID}).
 		Where(sq.Eq{"deleted_at": nil}).
 		PlaceholderFormat(sq.Question)
 
@@ -40,19 +40,19 @@ func Update(
 		}
 		hasRecipeUpdates = true
 	}
-	if edits.PhotoUrl != nil {
-		if *edits.PhotoUrl == "" {
+	if edits.PhotoURL != nil {
+		if *edits.PhotoURL == "" {
 			query = query.Set("photo_url", nil)
 		} else {
-			query = query.Set("photo_url", *edits.PhotoUrl)
+			query = query.Set("photo_url", *edits.PhotoURL)
 		}
 		hasRecipeUpdates = true
 	}
-	if edits.SourceUrl != nil {
-		if *edits.SourceUrl == "" {
+	if edits.SourceURL != nil {
+		if *edits.SourceURL == "" {
 			query = query.Set("source_url", nil)
 		} else {
-			query = query.Set("source_url", *edits.SourceUrl)
+			query = query.Set("source_url", *edits.SourceURL)
 		}
 		hasRecipeUpdates = true
 	}
@@ -101,7 +101,7 @@ func Update(
 	}
 
 	if edits.Ingredients != nil {
-		_, err = tx.ExecContext(ctx, `DELETE FROM ingredients WHERE recipe_id = ?`, recipeId)
+		_, err = tx.ExecContext(ctx, `DELETE FROM ingredients WHERE recipe_id = ?`, recipeID)
 		if err != nil {
 			return fmt.Errorf("failed to delete old ingredients: %w", err)
 		}
@@ -112,7 +112,7 @@ func Update(
 				ctx,
 				`INSERT INTO ingredients (ingredient_id, recipe_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
 				iid,
-				recipeId,
+				recipeID,
 				ing.Amount,
 				ing.Unit,
 				ing.Item,
@@ -127,7 +127,7 @@ func Update(
 		_, err = tx.ExecContext(
 			ctx,
 			`DELETE FROM instructions WHERE recipe_id = ?`,
-			recipeId,
+			recipeID,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to delete old instructions: %w", err)
@@ -139,7 +139,7 @@ func Update(
 				ctx,
 				`INSERT INTO instructions (instruction_id, recipe_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
 				inid,
-				recipeId,
+				recipeID,
 				i+1,
 				instr,
 			)

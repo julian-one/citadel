@@ -55,9 +55,13 @@ func TestListUsers_Admin(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var users []user.User
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&users))
-	assert.Len(t, users, 2)
+	var body struct {
+		Items []user.User `json:"items"`
+		Total int         `json:"total"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Len(t, body.Items, 2)
+	assert.Equal(t, 2, body.Total)
 }
 
 func TestListUsers_NonAdmin(t *testing.T) {

@@ -24,7 +24,7 @@ func CreateRecipeLog(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipeId := r.PathValue("id")
+		recipeID := r.PathValue("id")
 
 		var req recipelog.CreateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -36,9 +36,9 @@ func CreateRecipeLog(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		req.User = s.User
-		req.RecipeId = recipeId
+		req.RecipeId = recipeID
 
-		logId, err := recipelog.Create(ctx, db, req)
+		logID, err := recipelog.Create(ctx, db, req)
 		if err != nil {
 			if strings.Contains(err.Error(), "rating must be") ||
 				strings.Contains(err.Error(), "intensity must be") {
@@ -56,7 +56,7 @@ func CreateRecipeLog(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"log_id": logId})
+		json.NewEncoder(w).Encode(map[string]string{"log_id": logID})
 	}
 }
 
@@ -71,9 +71,9 @@ func ListRecipeLogs(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		recipeId := r.PathValue("id")
+		recipeID := r.PathValue("id")
 
-		logs, err := recipelog.ListByRecipe(ctx, db, s.User, recipeId)
+		logs, err := recipelog.ListByRecipe(ctx, db, s.User, recipeID)
 		if err != nil {
 			logger.Error("failed to list recipe logs", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -99,9 +99,9 @@ func DeleteRecipeLog(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		logId := r.PathValue("id")
+		logID := r.PathValue("id")
 
-		err := recipelog.Delete(ctx, db, s.User, logId)
+		err := recipelog.Delete(ctx, db, s.User, logID)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found or not owned") {
 				w.Header().Set("Content-Type", "application/json")

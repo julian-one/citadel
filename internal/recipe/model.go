@@ -5,12 +5,12 @@ import (
 )
 
 type Recipe struct {
-	Id           string         `db:"recipe_id"   json:"recipe_id"`
+	ID           string         `db:"recipe_id"   json:"recipe_id"`
 	User         string         `db:"user_id"     json:"user_id"`
 	Title        string         `db:"title"       json:"title"`
 	Description  *string        `db:"description" json:"description"`
-	PhotoUrl     *string        `db:"photo_url"   json:"photo_url"`
-	SourceUrl    *string        `db:"source_url"  json:"source_url"`
+	PhotoURL     *string        `db:"photo_url"   json:"photo_url"`
+	SourceURL    *string        `db:"source_url"  json:"source_url"`
 	Ingredients  []Ingredient   `db:"-"           json:"ingredients"`
 	Instructions []string       `db:"-"           json:"instructions"`
 	CookTime     *time.Duration `db:"cook_time"   json:"cook_time"`
@@ -22,7 +22,7 @@ type Recipe struct {
 	DeletedAt    *time.Time     `db:"deleted_at"  json:"deleted_at,omitempty"`
 }
 
-type RecipeRow struct {
+type recipeRow struct {
 	Recipe
 	RawIngredients  []byte `db:"ingredients_json"`
 	RawInstructions []byte `db:"instructions_json"`
@@ -102,16 +102,16 @@ func (u Unit) Valid() bool {
 }
 
 type Ingredient struct {
-	Id       string  `db:"ingredient_id" json:"ingredient_id,omitempty"`
-	RecipeId string  `db:"recipe_id"     json:"recipe_id,omitempty"`
-	Amount   float64 `db:"amount"        json:"amount"`
-	Unit     Unit    `db:"unit"          json:"unit"`
-	Item     string  `db:"item"          json:"item"`
+	ID     string  `db:"ingredient_id" json:"ingredient_id,omitempty"`
+	Recipe string  `db:"recipe_id"     json:"recipe_id,omitempty"`
+	Amount float64 `db:"amount"        json:"amount"`
+	Unit   Unit    `db:"unit"          json:"unit"`
+	Item   string  `db:"item"          json:"item"`
 }
 
 type Instruction struct {
-	Id          string `db:"instruction_id" json:"instruction_id,omitempty"`
-	RecipeId    string `db:"recipe_id"      json:"recipe_id,omitempty"`
+	ID          string `db:"instruction_id" json:"instruction_id,omitempty"`
+	Recipe      string `db:"recipe_id"      json:"recipe_id,omitempty"`
 	StepNumber  int32  `db:"step_number"    json:"step_number"`
 	Instruction string `db:"instruction"    json:"instruction"`
 }
@@ -119,8 +119,8 @@ type Instruction struct {
 type EditableFields struct {
 	Title        *string        `json:"title"`
 	Description  *string        `json:"description"`
-	PhotoUrl     *string        `json:"photo_url"`
-	SourceUrl    *string        `json:"source_url"`
+	PhotoURL     *string        `json:"photo_url"`
+	SourceURL    *string        `json:"source_url"`
 	Ingredients  *[]Ingredient  `json:"ingredients"`
 	Instructions *[]string      `json:"instructions"`
 	CookTime     *time.Duration `json:"cook_time"`

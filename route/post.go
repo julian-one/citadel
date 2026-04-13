@@ -30,7 +30,7 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		posts, err := post.List(ctx, db, opts)
+		items, err := post.List(ctx, db, opts)
 		if err != nil {
 			logger.Error("failed to list posts", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -39,9 +39,21 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
+		total, err := post.Count(ctx, db, opts)
+		if err != nil {
+			logger.Error("failed to count posts", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to list posts"})
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(posts)
+		json.NewEncoder(w).Encode(struct {
+			Items []post.PostWithAuthor `json:"items"`
+			Total int                  `json:"total"`
+		}{items, total})
 	}
 }
 
