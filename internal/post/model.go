@@ -3,7 +3,7 @@ package post
 import "time"
 
 type Post struct {
-	Id        string     `db:"post_id"    json:"post_id"`
+	ID        string     `db:"post_id"    json:"post_id"`
 	User      string     `db:"user_id"    json:"user_id"`
 	Title     string     `db:"title"      json:"title"`
 	Content   string     `db:"content"    json:"content"`

@@ -50,8 +50,8 @@ func ListSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		sessionId := r.PathValue("id")
-		err := session.Delete(ctx, db, sessionId)
+		sessionID := r.PathValue("id")
+		err := session.Delete(ctx, db, sessionID)
 		if err != nil {
 			logger.Error("failed to delete session", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -67,8 +67,8 @@ func DeleteSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func DeleteAllSessions(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		userId := r.PathValue("id")
-		err := session.DeleteAll(ctx, db, userId)
+		userID := r.PathValue("id")
+		err := session.DeleteAll(ctx, db, userID)
 		if err != nil {
 			logger.Error("failed to delete all sessions", "error", err)
 			w.Header().Set("Content-Type", "application/json")

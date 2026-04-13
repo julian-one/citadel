@@ -10,7 +10,7 @@ import (
 )
 
 func ById(ctx context.Context, db *sqlx.DB, recipeId string) (*Recipe, error) {
-	var row RecipeRow
+	var row recipeRow
 
 	queryBuilder := sq.Select("r.*").
 		Column("(SELECT json_group_array(json_object('amount', amount, 'unit', unit, 'item', item)) FROM ingredients WHERE recipe_id = r.recipe_id) AS ingredients_json").

@@ -1,4 +1,3 @@
-// Package route asdf
 package route
 
 import (

@@ -29,7 +29,7 @@ func isValidColumn(column string) bool {
 type ListOptions struct {
 	Search  string // searches username and email
 	Role    *Role  // filter by role (nil = no filter)
-	OrderBy []database.OrderBy
+	OrderBy []database.Order
 }
 
 func ParseListOptions(r *http.Request) (ListOptions, error) {
@@ -52,9 +52,14 @@ func ParseListOptions(r *http.Request) (ListOptions, error) {
 	}
 
 	if orderBy := query.Get("order_by"); orderBy != "" {
-		parsed, err := database.ParseOrderBy(orderBy)
+		parsed, err := database.ParseOrder(orderBy)
 		if err != nil {
 			return opts, err
+		}
+		for _, o := range parsed {
+			if !isValidColumn(o.Column) {
+				return opts, fmt.Errorf("invalid column name: %s", o.Column)
+			}
 		}
 		opts.OrderBy = parsed
 	}
@@ -85,20 +90,12 @@ func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]User, error) {
 	// Apply ordering
 	if len(opts.OrderBy) > 0 {
 		for _, o := range opts.OrderBy {
-			// Validate order direction
-			if !o.Order.Valid() {
-				return nil, fmt.Errorf("invalid order direction: %s", o.Order)
-			}
-
-			// Validate column name (whitelist approach for security)
 			if !isValidColumn(o.Column) {
 				return nil, fmt.Errorf("invalid column name: %s", o.Column)
 			}
-
-			query = query.OrderBy(fmt.Sprintf("%s %s", o.Column, o.Order))
+			query = query.OrderBy(fmt.Sprintf("%s %s", o.Column, o.Direction))
 		}
 	} else {
-		// Default ordering if none specified
 		query = query.OrderBy("created_at DESC")
 	}
 

@@ -26,7 +26,7 @@ func TestGetRecipe_Authenticated(t *testing.T) {
 
 	var r recipe.Recipe
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
-	assert.Equal(t, td.RecipeId, r.Id)
+	assert.Equal(t, td.RecipeId, r.ID)
 	assert.Equal(t, "Test Recipe", r.Title)
 	assert.Len(t, r.Ingredients, 1)
 	assert.Equal(t, "Water", r.Ingredients[0].Item)
@@ -46,7 +46,7 @@ func TestGetRecipe_Unauthenticated(t *testing.T) {
 
 	var r recipe.Recipe
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
-	assert.Equal(t, td.RecipeId, r.Id)
+	assert.Equal(t, td.RecipeId, r.ID)
 }
 
 func TestListRecipes_Authenticated(t *testing.T) {
@@ -60,9 +60,13 @@ func TestListRecipes_Authenticated(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var recipes []recipe.Recipe
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&recipes))
-	assert.NotEmpty(t, recipes)
+	var result struct {
+		Items []recipe.Recipe `json:"items"`
+		Total int             `json:"total"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.NotEmpty(t, result.Items)
+	assert.Greater(t, result.Total, 0)
 }
 
 func TestCreateRecipe_Authenticated(t *testing.T) {
