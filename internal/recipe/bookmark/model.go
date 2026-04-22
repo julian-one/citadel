@@ -1,4 +1,4 @@
-package bookmark
+package recipebookmark
 
 import (
 	"time"

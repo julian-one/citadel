@@ -110,29 +110,25 @@ func Initialize(config Config) http.Handler {
 	// Recipe Bookmarks
 	mux.Handle(
 		"PUT /recipes/{id}/bookmark",
-		protectedChain.ThenFunc(BookmarkRecipe(config.Logger, config.DB)),
+		protectedChain.ThenFunc(CreateRecipeBookmark(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /recipes/{id}/bookmark",
 		protectedChain.ThenFunc(DeleteRecipeBookmark(config.Logger, config.DB)),
 	)
-	mux.Handle(
-		"GET /recipes/{id}/bookmark",
-		protectedChain.ThenFunc(GetBookmarkStatus(config.Logger, config.DB)),
-	)
 
-	// Recipe Logs
+	// Recipe Reviews
 	mux.Handle(
-		"POST /recipes/{id}/logs",
-		protectedChain.ThenFunc(CreateRecipeLog(config.Logger, config.DB)),
+		"GET /recipes/{id}/reviews",
+		optionalChain.ThenFunc(ListRecipeReviews(config.Logger, config.DB)),
 	)
 	mux.Handle(
-		"GET /recipes/{id}/logs",
-		protectedChain.ThenFunc(ListRecipeLogs(config.Logger, config.DB)),
+		"POST /recipes/{id}/reviews",
+		protectedChain.ThenFunc(CreateRecipeReview(config.Logger, config.DB)),
 	)
 	mux.Handle(
-		"DELETE /recipe-logs/{id}",
-		protectedChain.ThenFunc(DeleteRecipeLog(config.Logger, config.DB)),
+		"DELETE /recipe-reviews/{id}",
+		protectedChain.ThenFunc(DeleteRecipeReview(config.Logger, config.DB)),
 	)
 
 	// Pokemon

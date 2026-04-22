@@ -52,8 +52,11 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(struct {
 			Items []post.PostWithAuthor `json:"items"`
-			Total int                  `json:"total"`
-		}{items, total})
+			Total int                   `json:"total"`
+		}{
+			Items: items,
+			Total: total,
+		})
 	}
 }
 

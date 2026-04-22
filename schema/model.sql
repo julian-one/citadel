@@ -73,18 +73,22 @@ CREATE TABLE IF NOT EXISTS recipe_bookmarks (
   UNIQUE (user_id, recipe_id)
 );
 
-CREATE TABLE IF NOT EXISTS recipe_logs (
-  log_id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS recipe_reviews (
+  review_id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   recipe_id TEXT NOT NULL,
-  notes TEXT,
-  rating REAL CHECK (rating >= 1.0 AND rating <= 5.0),
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  difficulty INTEGER CHECK (difficulty >= 1 AND difficulty <= 5),
   duration INTEGER,
-  intensity INTEGER CHECK (intensity IN (1, 2, 3)),
+  notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
   FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE
 );
+
+-- Enforce one review per user per recipe per calendar day.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recipe_reviews_user_recipe_day
+ON recipe_reviews (user_id, recipe_id, date(created_at));
 
 CREATE TABLE IF NOT EXISTS pokemon (
   pokemon_id TEXT PRIMARY KEY,

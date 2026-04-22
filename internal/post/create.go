@@ -19,7 +19,8 @@ func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, er
 	postId := uuid.New().String()
 	_, err := db.ExecContext(
 		ctx,
-		`INSERT INTO posts (post_id, user_id, title, content, public) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO posts (post_id, user_id, title, content, public) 
+			VALUES (?, ?, ?, ?, ?)`,
 		postId,
 		request.User,
 		request.Title,

@@ -47,7 +47,10 @@ func ParseListOptions(r *http.Request, user string) (ListOptions, error) {
 	if bookmarks := query.Get("bookmarks"); bookmarks != "" {
 		b, err := strconv.ParseBool(bookmarks)
 		if err != nil {
-			return opts, fmt.Errorf("invalid bookmarks value: %s (must be 'true' or 'false')", bookmarks)
+			return opts, fmt.Errorf(
+				"invalid bookmarks value: %s (must be 'true' or 'false')",
+				bookmarks,
+			)
 		}
 		opts.Bookmarks = b
 	}
@@ -104,7 +107,10 @@ func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
 		q = q.Where(sq.Eq{"r.category": opts.Category})
 	}
 	if opts.Bookmarks && opts.User != "" {
-		q = q.InnerJoin("recipe_bookmarks b ON (b.recipe_id = r.recipe_id AND b.user_id = ?)", opts.User)
+		q = q.InnerJoin(
+			"recipe_bookmarks b ON (b.recipe_id = r.recipe_id AND b.user_id = ?)",
+			opts.User,
+		)
 	}
 
 	return q

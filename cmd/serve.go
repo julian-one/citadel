@@ -57,8 +57,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		baseURL,
 	)
 
-	// Initialize route handlers
 	signingKey := viper.GetString("hmac.signing_key")
+
+	// Initialize route handlers
 	handler := route.Initialize(route.Config{
 		Logger:     logger,
 		DB:         db,

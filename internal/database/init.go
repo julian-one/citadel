@@ -29,13 +29,6 @@ func New(path, schemaPath string) (*sqlx.DB, error) {
 	pragmas := []string{
 		// Enable referential integrity checks.
 		"PRAGMA foreign_keys = ON",
-		// WAL mode allows concurrent readers alongside a single writer,
-		// which improves throughput under typical web-server workloads.
-		"PRAGMA journal_mode = WAL",
-		// Wait up to 5 s when the database is locked by another writer
-		// before returning SQLITE_BUSY, avoiding spurious errors under
-		// brief write contention.
-		"PRAGMA busy_timeout = 5000",
 	}
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
