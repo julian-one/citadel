@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS recipes (
   title TEXT NOT NULL,
   description TEXT,
   photo_url TEXT,
-  source_url TEXT,
+  source_type TEXT,
+  source TEXT,
+  prep_time INTEGER,
   cook_time INTEGER,
   serves INTEGER,
   cuisine TEXT,
@@ -46,21 +48,29 @@ CREATE TABLE IF NOT EXISTS recipes (
   FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS recipe_components (
+  component_id TEXT PRIMARY KEY,
+  recipe_id TEXT NOT NULL,
+  name TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS ingredients (
   ingredient_id TEXT PRIMARY KEY,
-  recipe_id TEXT NOT NULL,
+  component_id TEXT NOT NULL,
   amount REAL NOT NULL,
   unit TEXT NOT NULL,
   item TEXT NOT NULL,
-  FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE
+  FOREIGN KEY (component_id) REFERENCES recipe_components (component_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS instructions (
   instruction_id TEXT PRIMARY KEY,
-  recipe_id TEXT NOT NULL,
+  component_id TEXT NOT NULL,
   step_number INTEGER NOT NULL,
   instruction TEXT NOT NULL,
-  FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id) ON DELETE CASCADE
+  FOREIGN KEY (component_id) REFERENCES recipe_components (component_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS recipe_bookmarks (

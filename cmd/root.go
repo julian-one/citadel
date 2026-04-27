@@ -48,15 +48,15 @@ func init() {
 
 func initializeConfig() error {
 	viper.SetDefault("server.port", "8080")
+	viper.SetDefault("server.base_url", "https://julian-one.com")
+	viper.SetDefault("server.max_upload_mb", 10)
 	viper.SetDefault("database.path", "./citadel.db")
 	viper.SetDefault("database.schema", "./schema/model.sql")
-	viper.SetDefault("server.max_upload_mb", 10)
 	viper.SetDefault("anthropic.model", "claude-sonnet-4-5-20250929")
 	viper.SetDefault("anthropic.api_key", "")
+	viper.SetDefault("resend.from_email", "noreply@contact.julian-one.com")
 	viper.SetDefault("resend.api_key", "")
 	viper.SetDefault("hmac.signing_key", "")
-	viper.SetDefault("resend.from_email", "noreply@contact.julian-one.com")
-	viper.SetDefault("server.base_url", "https://julian-one.com")
 
 	viper.SetEnvPrefix("CITADEL")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))

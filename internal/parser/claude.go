@@ -19,30 +19,56 @@ type scanIngredient struct {
 	Item   string  `json:"item"`
 }
 
+type scanComponent struct {
+	Name         *string          `json:"name"`
+	Ingredients  []scanIngredient `json:"ingredients"`
+	Instructions []string         `json:"instructions"`
+}
+
 type scanResult struct {
-	Title           string           `json:"title"`
-	Description     *string          `json:"description"`
-	Ingredients     []scanIngredient `json:"ingredients"`
-	Instructions    []string         `json:"instructions"`
-	CookTimeMinutes *float64         `json:"cook_time_minutes"`
-	Serves          *uint32          `json:"serves"`
-	Cuisine         *string          `json:"cuisine"`
-	Category        *string          `json:"category"`
+	Title           string          `json:"title"`
+	Description     *string         `json:"description"`
+	Components      []scanComponent `json:"components"`
+	PrepTimeMinutes *float64        `json:"prep_time_minutes"`
+	CookTimeMinutes *float64        `json:"cook_time_minutes"`
+	Serves          *uint32         `json:"serves"`
+	Cuisine         *string         `json:"cuisine"`
+	Category        *string         `json:"category"`
+	Source          *string         `json:"source"`
 }
 
 func (s *scanResult) toRecipe() *recipe.Recipe {
 	r := &recipe.Recipe{
-		Title:        s.Title,
-		Description:  s.Description,
-		Instructions: s.Instructions,
+		Title:       s.Title,
+		Description: s.Description,
 	}
 
-	for _, ing := range s.Ingredients {
-		r.Ingredients = append(r.Ingredients, recipe.Ingredient{
-			Amount: ing.Amount,
-			Unit:   recipe.Unit(ing.Unit),
-			Item:   ing.Item,
-		})
+	for i, comp := range s.Components {
+		c := recipe.Component{
+			Name:         comp.Name,
+			Position:     i,
+			Ingredients:  make([]recipe.Ingredient, 0, len(comp.Ingredients)),
+			Instructions: comp.Instructions,
+		}
+
+		for _, ing := range comp.Ingredients {
+			c.Ingredients = append(c.Ingredients, recipe.Ingredient{
+				Amount: ing.Amount,
+				Unit:   recipe.Unit(ing.Unit),
+				Item:   ing.Item,
+			})
+		}
+
+		if c.Instructions == nil {
+			c.Instructions = []string{}
+		}
+
+		r.Components = append(r.Components, c)
+	}
+
+	if s.PrepTimeMinutes != nil {
+		d := time.Duration(*s.PrepTimeMinutes * float64(time.Minute))
+		r.PrepTime = &d
 	}
 
 	if s.CookTimeMinutes != nil {
@@ -63,6 +89,17 @@ func (s *scanResult) toRecipe() *recipe.Recipe {
 		c := recipe.Category(*s.Category)
 		if c.Valid() {
 			r.Category = &c
+		}
+	}
+
+	if s.Source != nil && *s.Source != "" {
+		r.Source = s.Source
+		if strings.HasPrefix(*s.Source, "http://") || strings.HasPrefix(*s.Source, "https://") {
+			st := recipe.SourceURL
+			r.SourceType = &st
+		} else {
+			st := recipe.SourceBook
+			r.SourceType = &st
 		}
 	}
 
@@ -124,7 +161,7 @@ func (c *Claude) Parse(text string) (*recipe.Recipe, error) {
 	req.Header.Set("x-api-key", c.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{Timeout: time.Second * 10}
+	client := &http.Client{Timeout: time.Second * 60}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)

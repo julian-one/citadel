@@ -28,10 +28,11 @@ func TestGetRecipe_Authenticated(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
 	assert.Equal(t, td.RecipeId, r.ID)
 	assert.Equal(t, "Test Recipe", r.Title)
-	assert.Len(t, r.Ingredients, 1)
-	assert.Equal(t, "Water", r.Ingredients[0].Item)
-	assert.Len(t, r.Instructions, 1)
-	assert.Equal(t, "Boil water", r.Instructions[0])
+	require.Len(t, r.Components, 1)
+	assert.Len(t, r.Components[0].Ingredients, 1)
+	assert.Equal(t, "Water", r.Components[0].Ingredients[0].Item)
+	assert.Len(t, r.Components[0].Instructions, 1)
+	assert.Equal(t, "Boil water", r.Components[0].Instructions[0])
 }
 
 func TestGetRecipe_Unauthenticated(t *testing.T) {
@@ -74,8 +75,10 @@ func TestCreateRecipe_Authenticated(t *testing.T) {
 	payload := `{
 		"title": "New Recipe",
 		"description": "New Description",
-		"ingredients": [{"amount": 2, "unit": "each", "item": "Eggs"}],
-		"instructions": ["Crack eggs", "Fry eggs"],
+		"components": [{
+			"ingredients": [{"amount": 2, "unit": "whole", "item": "Eggs"}],
+			"instructions": ["Crack eggs", "Fry eggs"]
+		}],
 		"cook_time": 600000000000,
 		"serves": 2,
 		"cuisine": "American",
@@ -146,7 +149,7 @@ func TestUpdateRecipe_OtherUser(t *testing.T) {
 
 func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 	// Create a recipe to delete
-	payload := `{"title": "Delete Me", "ingredients": [], "instructions": [], "cuisine": "American", "difficulty": "Easy", "category": "Main"}`
+	payload := `{"title": "Delete Me", "components": [], "cuisine": "American", "category": "Main"}`
 	req, _ := http.NewRequest("POST", server.URL+"/recipes", strings.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})

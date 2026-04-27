@@ -1,3 +1,4 @@
+// Package route defines the HTTP handlers and route registration for the API.
 package route
 
 import (

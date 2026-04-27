@@ -9,18 +9,25 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type ComponentRequest struct {
+	Name         *string      `json:"name"`
+	Ingredients  []Ingredient `json:"ingredients"`
+	Instructions []string     `json:"instructions"`
+}
+
 type CreateRequest struct {
-	User         string         `json:"user_id"`
-	Title        string         `json:"title"`
-	Description  *string        `json:"description"`
-	Ingredients  []Ingredient   `json:"ingredients"`
-	Instructions []string       `json:"instructions"`
-	CookTime     *time.Duration `json:"cook_time"`
-	Serves       *uint32        `json:"serves"`
-	Cuisine      *Cuisine       `json:"cuisine"`
-	Category     *Category      `json:"category"`
-	PhotoUrl     *string        `json:"photo_url"`
-	SourceUrl    *string        `json:"source_url"`
+	User        string             `json:"user_id"`
+	Title       string             `json:"title"`
+	Description *string            `json:"description"`
+	Components  []ComponentRequest `json:"components"`
+	PrepTime    *time.Duration     `json:"prep_time"`
+	CookTime    *time.Duration     `json:"cook_time"`
+	Serves      *uint32            `json:"serves"`
+	Cuisine     *Cuisine           `json:"cuisine"`
+	Category    *Category          `json:"category"`
+	PhotoURL    *string            `json:"photo_url"`
+	SourceType  *SourceType        `json:"source_type"`
+	Source      *string            `json:"source"`
 }
 
 func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, error) {
@@ -34,13 +41,16 @@ func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, er
 
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO recipes (recipe_id, user_id, title, description, photo_url, source_url, cook_time, serves, cuisine, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO recipes (recipe_id, user_id, title, description, photo_url, source_type, source, prep_time, cook_time, serves, cuisine, category) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		rid,
 		request.User,
 		request.Title,
 		request.Description,
-		request.PhotoUrl,
-		request.SourceUrl,
+		request.PhotoURL,
+		request.SourceType,
+		request.Source,
+		request.PrepTime,
 		request.CookTime,
 		request.Serves,
 		request.Cuisine,
@@ -50,34 +60,49 @@ func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, er
 		return "", fmt.Errorf("failed to insert recipe: %w", err)
 	}
 
-	for _, ing := range request.Ingredients {
-		iid := uuid.New().String()
+	for i, comp := range request.Components {
+		cid := uuid.New().String()
 		_, err = tx.ExecContext(
 			ctx,
-			`INSERT INTO ingredients (ingredient_id, recipe_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
-			iid,
+			`INSERT INTO recipe_components (component_id, recipe_id, name, position) VALUES (?, ?, ?, ?)`,
+			cid,
 			rid,
-			ing.Amount,
-			ing.Unit,
-			ing.Item,
+			comp.Name,
+			i,
 		)
 		if err != nil {
-			return "", fmt.Errorf("failed to insert ingredient: %w", err)
+			return "", fmt.Errorf("failed to insert component: %w", err)
 		}
-	}
 
-	for i, instr := range request.Instructions {
-		inid := uuid.New().String()
-		_, err = tx.ExecContext(
-			ctx,
-			`INSERT INTO instructions (instruction_id, recipe_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
-			inid,
-			rid,
-			i+1,
-			instr,
-		)
-		if err != nil {
-			return "", fmt.Errorf("failed to insert instruction: %w", err)
+		for _, ing := range comp.Ingredients {
+			iid := uuid.New().String()
+			_, err = tx.ExecContext(
+				ctx,
+				`INSERT INTO ingredients (ingredient_id, component_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
+				iid,
+				cid,
+				ing.Amount,
+				ing.Unit,
+				ing.Item,
+			)
+			if err != nil {
+				return "", fmt.Errorf("failed to insert ingredient: %w", err)
+			}
+		}
+
+		for j, instr := range comp.Instructions {
+			inid := uuid.New().String()
+			_, err = tx.ExecContext(
+				ctx,
+				`INSERT INTO instructions (instruction_id, component_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
+				inid,
+				cid,
+				j+1,
+				instr,
+			)
+			if err != nil {
+				return "", fmt.Errorf("failed to insert instruction: %w", err)
+			}
 		}
 	}
 

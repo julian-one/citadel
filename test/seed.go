@@ -63,14 +63,18 @@ func Seed(db *sqlx.DB) *TestData {
 		User:        userId,
 		Title:       "Test Recipe",
 		Description: &desc,
-		Ingredients: []recipe.Ingredient{
-			{Amount: 1.0, Unit: recipe.Cup, Item: "Water"},
+		Components: []recipe.ComponentRequest{
+			{
+				Ingredients: []recipe.Ingredient{
+					{Amount: 1.0, Unit: recipe.Cup, Item: "Water"},
+				},
+				Instructions: []string{"Boil water"},
+			},
 		},
-		Instructions: []string{"Boil water"},
-		CookTime:     &cookTime,
-		Serves:       &serves,
-		Cuisine:      &cuisine,
-		Category:     &category,
+		CookTime: &cookTime,
+		Serves:   &serves,
+		Cuisine:  &cuisine,
+		Category: &category,
 	})
 	if err != nil {
 		panic(err)

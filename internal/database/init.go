@@ -31,7 +31,8 @@ func New(path, schemaPath string) (*sqlx.DB, error) {
 		"PRAGMA foreign_keys = ON",
 	}
 	for _, pragma := range pragmas {
-		if _, err := db.Exec(pragma); err != nil {
+		_, err = db.Exec(pragma)
+		if err != nil {
 			return nil, fmt.Errorf("failed to set pragma (%s): %w", pragma, err)
 		}
 	}

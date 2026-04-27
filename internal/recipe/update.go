@@ -48,11 +48,27 @@ func Update(
 		}
 		hasRecipeUpdates = true
 	}
-	if edits.SourceURL != nil {
-		if *edits.SourceURL == "" {
-			query = query.Set("source_url", nil)
+	if edits.SourceType != nil {
+		if *edits.SourceType == "" {
+			query = query.Set("source_type", nil)
 		} else {
-			query = query.Set("source_url", *edits.SourceURL)
+			query = query.Set("source_type", *edits.SourceType)
+		}
+		hasRecipeUpdates = true
+	}
+	if edits.Source != nil {
+		if *edits.Source == "" {
+			query = query.Set("source", nil)
+		} else {
+			query = query.Set("source", *edits.Source)
+		}
+		hasRecipeUpdates = true
+	}
+	if edits.PrepTime != nil {
+		if *edits.PrepTime == 0 {
+			query = query.Set("prep_time", nil)
+		} else {
+			query = query.Set("prep_time", *edits.PrepTime)
 		}
 		hasRecipeUpdates = true
 	}
@@ -100,51 +116,60 @@ func Update(
 		}
 	}
 
-	if edits.Ingredients != nil {
-		_, err = tx.ExecContext(ctx, `DELETE FROM ingredients WHERE recipe_id = ?`, recipeID)
-		if err != nil {
-			return fmt.Errorf("failed to delete old ingredients: %w", err)
-		}
-
-		for _, ing := range *edits.Ingredients {
-			iid := uuid.New().String()
-			_, err = tx.ExecContext(
-				ctx,
-				`INSERT INTO ingredients (ingredient_id, recipe_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
-				iid,
-				recipeID,
-				ing.Amount,
-				ing.Unit,
-				ing.Item,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to insert new ingredient: %w", err)
-			}
-		}
-	}
-
-	if edits.Instructions != nil {
+	if edits.Components != nil {
+		// Cascade delete removes all components, ingredients, and instructions
 		_, err = tx.ExecContext(
 			ctx,
-			`DELETE FROM instructions WHERE recipe_id = ?`,
+			`DELETE FROM recipe_components WHERE recipe_id = ?`,
 			recipeID,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to delete old instructions: %w", err)
+			return fmt.Errorf("failed to delete old components: %w", err)
 		}
 
-		for i, instr := range *edits.Instructions {
-			inid := uuid.New().String()
+		for i, comp := range *edits.Components {
+			cid := uuid.New().String()
 			_, err = tx.ExecContext(
 				ctx,
-				`INSERT INTO instructions (instruction_id, recipe_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
-				inid,
+				`INSERT INTO recipe_components (component_id, recipe_id, name, position) VALUES (?, ?, ?, ?)`,
+				cid,
 				recipeID,
-				i+1,
-				instr,
+				comp.Name,
+				i,
 			)
 			if err != nil {
-				return fmt.Errorf("failed to insert new instruction: %w", err)
+				return fmt.Errorf("failed to insert component: %w", err)
+			}
+
+			for _, ing := range comp.Ingredients {
+				iid := uuid.New().String()
+				_, err = tx.ExecContext(
+					ctx,
+					`INSERT INTO ingredients (ingredient_id, component_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
+					iid,
+					cid,
+					ing.Amount,
+					ing.Unit,
+					ing.Item,
+				)
+				if err != nil {
+					return fmt.Errorf("failed to insert ingredient: %w", err)
+				}
+			}
+
+			for j, instr := range comp.Instructions {
+				inid := uuid.New().String()
+				_, err = tx.ExecContext(
+					ctx,
+					`INSERT INTO instructions (instruction_id, component_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
+					inid,
+					cid,
+					j+1,
+					instr,
+				)
+				if err != nil {
+					return fmt.Errorf("failed to insert instruction: %w", err)
+				}
 			}
 		}
 	}

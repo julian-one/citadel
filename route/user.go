@@ -110,7 +110,8 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 
 		id := r.PathValue("id")
 		if s.User != id {
-			u, err := user.ById(ctx, db, s.User)
+			var u *user.User
+			u, err = user.ById(ctx, db, s.User)
 			if err != nil || u.Role != user.RoleAdmin {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)

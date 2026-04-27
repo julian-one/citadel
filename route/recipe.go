@@ -102,7 +102,7 @@ func GetRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		rec, err := recipe.ById(ctx, db, id)
+		rec, err := recipe.ByID(ctx, db, id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.Header().Set("Content-Type", "application/json")
@@ -135,7 +135,7 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		id := r.PathValue("id")
-		original, err := recipe.ById(ctx, db, id)
+		original, err := recipe.ByID(ctx, db, id)
 		if err != nil {
 			logger.Error("failed to fetch recipe for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -186,7 +186,7 @@ func DeleteRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		original, err := recipe.ById(ctx, db, id)
+		original, err := recipe.ByID(ctx, db, id)
 		if err != nil {
 			logger.Error("failed to fetch recipe for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")

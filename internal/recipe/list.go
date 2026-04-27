@@ -2,7 +2,6 @@ package recipe
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -16,14 +15,14 @@ import (
 )
 
 type ListOptions struct {
-	Search         string
-	Cuisine        string
-	Category       string
-	Bookmarks      bool
-	User           string
-	IncludeDeleted bool
-	OrderBy        []database.Order
-	Pagination     database.Pagination
+	Search     string
+	Cuisine    string
+	Category   string
+	Bookmarks  bool
+	User       string
+	Deleted    bool
+	OrderBy    []database.Order
+	Pagination database.Pagination
 }
 
 func ParseListOptions(r *http.Request, user string) (ListOptions, error) {
@@ -92,7 +91,7 @@ func (opts ListOptions) validate() error {
 }
 
 func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
-	if !opts.IncludeDeleted {
+	if !opts.Deleted {
 		q = q.Where("r.deleted_at IS NULL")
 	}
 
@@ -135,8 +134,6 @@ func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
 func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) {
 	q := applyFilters(
 		database.QB.Select("r.*").
-			Column("(SELECT json_group_array(json_object('amount', amount, 'unit', unit, 'item', item)) FROM ingredients WHERE recipe_id = r.recipe_id) AS ingredients_json").
-			Column("(SELECT json_group_array(instruction) FROM instructions WHERE recipe_id = r.recipe_id ORDER BY step_number ASC) AS instructions_json").
 			From("recipes r"),
 		opts,
 	)
@@ -156,32 +153,31 @@ func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) 
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	rows := []recipeRow{}
-	if err = db.SelectContext(ctx, &rows, query, args...); err != nil {
+	recipes := make([]Recipe, 0)
+	if err = db.SelectContext(ctx, &recipes, query, args...); err != nil {
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}
 
-	recipes := make([]Recipe, len(rows))
-	for i, row := range rows {
-		if len(row.RawIngredients) > 0 {
-			if err := json.Unmarshal(row.RawIngredients, &row.Ingredients); err != nil {
-				return nil, fmt.Errorf(
-					"failed to unmarshal ingredients for recipe %s: %w",
-					row.ID,
-					err,
-				)
-			}
+	recipe_ids := make([]string, len(recipes))
+	for i, r := range recipes {
+		recipe_ids[i] = r.ID
+	}
+
+	all_components, err := LoadComponents(ctx, db, recipe_ids)
+	if err != nil {
+		return nil, err
+	}
+
+	by_recipe := make(map[string][]Component, len(all_components))
+	for _, c := range all_components {
+		by_recipe[c.Recipe] = append(by_recipe[c.Recipe], c)
+	}
+
+	for i := range recipes {
+		recipes[i].Components = by_recipe[recipes[i].ID]
+		if recipes[i].Components == nil {
+			recipes[i].Components = []Component{}
 		}
-		if len(row.RawInstructions) > 0 {
-			if err := json.Unmarshal(row.RawInstructions, &row.Instructions); err != nil {
-				return nil, fmt.Errorf(
-					"failed to unmarshal instructions for recipe %s: %w",
-					row.ID,
-					err,
-				)
-			}
-		}
-		recipes[i] = row.Recipe
 	}
 
 	return recipes, nil
