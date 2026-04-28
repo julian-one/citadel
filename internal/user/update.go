@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -9,7 +10,7 @@ import (
 
 func Update(
 	ctx context.Context,
-	db *sqlx.DB,
+	db sqlx.ExtContext,
 	userId string,
 	username *string,
 	role *string,
@@ -34,9 +35,33 @@ func Update(
 	}
 
 	var user User
-	err = db.QueryRowxContext(ctx, sql, args...).StructScan(&user)
+	err = sqlx.GetContext(ctx, db, &user, sql, args...)
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func UpdatePassword(
+	ctx context.Context,
+	db sqlx.ExtContext,
+	userID string,
+	newPassword string,
+) error {
+	h, s, err := Hash(newPassword, nil)
+	if err != nil {
+		return fmt.Errorf("failed to hash new password: %w", err)
+	}
+
+	_, err = db.ExecContext(
+		ctx,
+		`UPDATE users SET password_hash = ?, salt = ?, updated_at = datetime('now') WHERE user_id = ?`,
+		h,
+		s,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+	return nil
 }

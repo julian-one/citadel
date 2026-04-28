@@ -8,9 +8,9 @@ import (
 )
 
 // ById retrieves session by id
-func ById(ctx context.Context, db *sqlx.DB, sessionId string) (*Session, error) {
+func ById(ctx context.Context, db sqlx.QueryerContext, sessionId string) (*Session, error) {
 	var s Session
-	err := db.GetContext(ctx, &s,
+	err := sqlx.GetContext(ctx, db, &s,
 		`SELECT * FROM sessions WHERE session_id = ? AND expires_at > datetime('now')`,
 		sessionId)
 	if err != nil {
@@ -20,9 +20,9 @@ func ById(ctx context.Context, db *sqlx.DB, sessionId string) (*Session, error) 
 }
 
 // IsValid checks if the session is valid (exists and not expired)
-func IsValid(ctx context.Context, db *sqlx.DB, sessionId string) error {
+func IsValid(ctx context.Context, db sqlx.QueryerContext, sessionId string) error {
 	var exists bool
-	err := db.GetContext(ctx, &exists,
+	err := sqlx.GetContext(ctx, db, &exists,
 		`SELECT EXISTS(
 			SELECT 1 FROM sessions 
 			WHERE session_id = ? AND expires_at > datetime('now')

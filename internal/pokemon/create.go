@@ -7,7 +7,7 @@ import (
 	"github.com/mtslzr/pokeapi-go/structs"
 )
 
-func Create(ctx context.Context, db *sqlx.DB, resp structs.Pokemon) (*Pokemon, error) {
+func Create(ctx context.Context, db sqlx.ExtContext, resp structs.Pokemon) (*Pokemon, error) {
 	var p Pokemon
 	err := db.QueryRowxContext(
 		ctx,

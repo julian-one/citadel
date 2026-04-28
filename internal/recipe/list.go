@@ -115,7 +115,7 @@ func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
 	return q
 }
 
-func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
+func Count(ctx context.Context, db sqlx.QueryerContext, opts ListOptions) (int, error) {
 	q := applyFilters(database.QB.Select("COUNT(*)").From("recipes r"), opts)
 
 	query, args, err := q.ToSql()
@@ -124,14 +124,14 @@ func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
 	}
 
 	var total int
-	if err = db.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
+	if err = db.QueryRowxContext(ctx, query, args...).Scan(&total); err != nil {
 		return 0, fmt.Errorf("failed to count recipes: %w", err)
 	}
 
 	return total, nil
 }
 
-func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) {
+func List(ctx context.Context, db sqlx.QueryerContext, opts ListOptions) ([]Recipe, error) {
 	q := applyFilters(
 		database.QB.Select("r.*").
 			From("recipes r"),
@@ -154,7 +154,7 @@ func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]Recipe, error) 
 	}
 
 	recipes := make([]Recipe, 0)
-	if err = db.SelectContext(ctx, &recipes, query, args...); err != nil {
+	if err = sqlx.SelectContext(ctx, db, &recipes, query, args...); err != nil {
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}
 

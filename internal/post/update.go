@@ -7,7 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Update(ctx context.Context, db *sqlx.DB, postId string, edits EditableFields) (*Post, error) {
+func Update(
+	ctx context.Context,
+	db sqlx.ExtContext,
+	postId string,
+	edits EditableFields,
+) (*Post, error) {
 	query := sq.Update("posts").
 		Set("updated_at", sq.Expr("datetime('now')")).
 		Where(sq.Eq{"post_id": postId}).

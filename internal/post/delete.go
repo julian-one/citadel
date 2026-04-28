@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Delete(ctx context.Context, db *sqlx.DB, postId string) error {
+func Delete(ctx context.Context, db sqlx.ExecerContext, postId string) error {
 	_, err := db.ExecContext(
 		ctx,
 		`UPDATE posts SET deleted_at = datetime('now') WHERE post_id = ?`,

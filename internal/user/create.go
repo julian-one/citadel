@@ -23,7 +23,8 @@ func Create(ctx context.Context, db sqlx.ExecerContext, request CreateRequest) (
 	uid := uuid.New().String()
 	_, err = db.ExecContext(
 		ctx,
-		`INSERT INTO users (user_id, username, email, password_hash, salt) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO users (user_id, username, email, password_hash, salt) 
+			VALUES (?, ?, ?, ?, ?)`,
 		uid,
 		request.Username,
 		request.Email,

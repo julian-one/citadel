@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"citadel/internal/middleware"
 	"citadel/internal/post"
 	"citadel/internal/session"
 
@@ -17,7 +16,7 @@ func ListPosts(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 
 		var userID string
-		if s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session); ok && s != nil {
+		if s, ok := ctx.Value(session.ContextKey).(*session.Session); ok && s != nil {
 			userID = s.User
 		}
 
@@ -109,7 +108,7 @@ func GetPost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -162,7 +161,7 @@ func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

@@ -15,7 +15,7 @@ type CreateRequest struct {
 	Public  bool   `json:"public"`
 }
 
-func Create(ctx context.Context, db *sqlx.DB, request CreateRequest) (string, error) {
+func Create(ctx context.Context, db sqlx.ExecerContext, request CreateRequest) (string, error) {
 	postId := uuid.New().String()
 	_, err := db.ExecContext(
 		ctx,

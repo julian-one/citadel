@@ -7,11 +7,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ByID(ctx context.Context, db *sqlx.DB, recipeID string) (*Recipe, error) {
+func ByID(ctx context.Context, db sqlx.QueryerContext, recipeID string) (*Recipe, error) {
 	var r Recipe
 
-	err := db.GetContext(
-		ctx,
+	err := sqlx.GetContext(ctx, db,
 		&r,
 		`SELECT * FROM recipes WHERE recipe_id = ? AND deleted_at IS NULL`,
 		recipeID,

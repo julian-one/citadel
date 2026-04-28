@@ -6,10 +6,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ByName(ctx context.Context, db *sqlx.DB, name string) (*Pokemon, error) {
+func ByName(ctx context.Context, db sqlx.QueryerContext, name string) (*Pokemon, error) {
 	var p Pokemon
-	err := db.GetContext(
-		ctx,
+	err := sqlx.GetContext(ctx, db,
 		&p,
 		`SELECT pokemon_id, name, height, weight FROM pokemon WHERE name = ?`,
 		name,
@@ -20,9 +19,9 @@ func ByName(ctx context.Context, db *sqlx.DB, name string) (*Pokemon, error) {
 	return &p, nil
 }
 
-func Exists(ctx context.Context, db *sqlx.DB, name string) bool {
+func Exists(ctx context.Context, db sqlx.QueryerContext, name string) bool {
 	var exists bool
-	err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM pokemon WHERE name = ?)`, name).
+	err := db.QueryRowxContext(ctx, `SELECT EXISTS(SELECT 1 FROM pokemon WHERE name = ?)`, name).
 		Scan(&exists)
 	if err != nil {
 		return false

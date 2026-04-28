@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func List(ctx context.Context, db *sqlx.DB, userId string) ([]Session, error) {
+func List(ctx context.Context, db sqlx.QueryerContext, userId string) ([]Session, error) {
 	s := []Session{}
 
 	query, args, err := sq.Select("*").
@@ -20,12 +20,9 @@ func List(ctx context.Context, db *sqlx.DB, userId string) ([]Session, error) {
 		return nil, fmt.Errorf("failed to build query: %w", err)
 	}
 
-	err = db.SelectContext(ctx, &s, query, args...)
+	err = sqlx.SelectContext(ctx, db, &s, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list session: %w", err)
-	}
-	if s == nil {
-		s = []Session{}
 	}
 
 	return s, nil

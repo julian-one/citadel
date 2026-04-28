@@ -7,7 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Delete(ctx context.Context, db *sqlx.DB, userId, reviewId string) error {
+func Delete(ctx context.Context, db sqlx.ExecerContext, userId, reviewId string) error {
 	_, err := db.ExecContext(
 		ctx,
 		`DELETE FROM recipe_reviews WHERE review_id = ? AND user_id = ?`,

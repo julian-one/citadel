@@ -2,7 +2,6 @@ package recipereview
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -40,23 +39,14 @@ var ErrDuplicateReview = fmt.Errorf(
 	"you can only submit one review per recipe per day",
 )
 
-func Create(ctx context.Context, db *sqlx.DB, req CreateRequest) (string, error) {
+func Create(ctx context.Context, db sqlx.ExtContext, req CreateRequest) (string, error) {
 	if err := req.Validate(); err != nil {
 		return "", err
 	}
 
-	// BEGIN IMMEDIATE acquires a reserved (write) lock upfront, preventing
-	// the TOCTOU race where two concurrent requests both pass the COUNT(*)
-	// check before either inserts.
-	tx, err := db.BeginTxx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
 	// Application-level check — gives a clean, user-friendly error.
 	var count int
-	err = tx.GetContext(ctx, &count, `
+	err := sqlx.GetContext(ctx, db, &count, `
 		SELECT COUNT(*) 
 		FROM recipe_reviews 
 		WHERE user_id = ? AND recipe_id = ? AND date(created_at, 'localtime') = date('now', 'localtime')
@@ -69,7 +59,7 @@ func Create(ctx context.Context, db *sqlx.DB, req CreateRequest) (string, error)
 	}
 
 	id := uuid.New().String()
-	_, err = tx.ExecContext(
+	_, err = db.ExecContext(
 		ctx,
 		`INSERT INTO recipe_reviews (review_id, user_id, recipe_id, notes, rating, duration, difficulty) 
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -87,10 +77,6 @@ func Create(ctx context.Context, db *sqlx.DB, req CreateRequest) (string, error)
 			return "", ErrDuplicateReview
 		}
 		return "", fmt.Errorf("failed to create recipe review: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return id, nil

@@ -1,13 +1,13 @@
 package route
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
-	"citadel/internal/middleware"
 	recipereview "citadel/internal/recipe/review"
 	"citadel/internal/session"
 
@@ -17,7 +17,7 @@ import (
 func CreateRecipeReview(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -39,7 +39,17 @@ func CreateRecipeReview(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		req.User = s.User
 		req.RecipeId = recipeID
 
-		reviewID, err := recipereview.Create(ctx, db, req)
+		tx, err := db.BeginTxx(ctx, &sql.TxOptions{})
+		if err != nil {
+			logger.Error("failed to begin transaction", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe review"})
+			return
+		}
+		defer tx.Rollback()
+
+		reviewID, err := recipereview.Create(ctx, tx, req)
 		if err != nil {
 			if errors.Is(err, recipereview.ErrDuplicateReview) ||
 				strings.Contains(err.Error(), "rating must be") ||
@@ -50,6 +60,14 @@ func CreateRecipeReview(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 				return
 			}
 			logger.Error("failed to create recipe review", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe review"})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			logger.Error("failed to commit transaction", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe review"})
@@ -85,7 +103,7 @@ func ListRecipeReviews(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func DeleteRecipeReview(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

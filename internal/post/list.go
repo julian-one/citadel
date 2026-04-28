@@ -104,7 +104,7 @@ func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
 	return q
 }
 
-func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
+func Count(ctx context.Context, db sqlx.QueryerContext, opts ListOptions) (int, error) {
 	q := applyFilters(database.QB.Select("COUNT(*)").From("posts p"), opts)
 
 	query, args, err := q.ToSql()
@@ -113,14 +113,14 @@ func Count(ctx context.Context, db *sqlx.DB, opts ListOptions) (int, error) {
 	}
 
 	var total int
-	if err = db.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
+	if err = db.QueryRowxContext(ctx, query, args...).Scan(&total); err != nil {
 		return 0, fmt.Errorf("failed to count posts: %w", err)
 	}
 
 	return total, nil
 }
 
-func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]PostWithAuthor, error) {
+func List(ctx context.Context, db sqlx.QueryerContext, opts ListOptions) ([]PostWithAuthor, error) {
 	q := applyFilters(
 		database.QB.Select("p.*, u.email, u.username").
 			From("posts p").
@@ -144,11 +144,8 @@ func List(ctx context.Context, db *sqlx.DB, opts ListOptions) ([]PostWithAuthor,
 	}
 
 	posts := []PostWithAuthor{}
-	if err = db.SelectContext(ctx, &posts, query, args...); err != nil {
+	if err = sqlx.SelectContext(ctx, db, &posts, query, args...); err != nil {
 		return nil, fmt.Errorf("failed to list posts: %w", err)
-	}
-	if posts == nil {
-		posts = []PostWithAuthor{}
 	}
 
 	return posts, nil

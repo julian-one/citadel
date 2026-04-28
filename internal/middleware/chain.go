@@ -1,6 +1,9 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
+	"slices"
+)
 
 // Middleware is the standard middleware signature
 type Middleware func(http.Handler) http.Handler
@@ -11,28 +14,22 @@ type Chain struct {
 }
 
 // New creates a new middleware chain
-func New(middlewares ...Middleware) Chain {
-	return Chain{middlewares: middlewares}
+func New(m Middleware) Chain {
+	return Chain{middlewares: []Middleware{m}}
 }
 
-// Use appends middleware to the chain, returns new chain
-func (c Chain) Use(m Middleware) Chain {
-	newMiddlewares := make([]Middleware, len(c.middlewares)+1)
-	copy(newMiddlewares, c.middlewares)
-	newMiddlewares[len(c.middlewares)] = m
-	return Chain{middlewares: newMiddlewares}
+// Append adds a middleware to the chain, returning a new chain.
+func (c Chain) Append(m Middleware) Chain {
+	return Chain{
+		middlewares: append(slices.Clone(c.middlewares), m),
+	}
 }
 
-// Then applies the chain to a handler
-// First middleware in chain is outermost
-func (c Chain) Then(h http.Handler) http.Handler {
-	for i := len(c.middlewares) - 1; i >= 0; i-- {
-		h = c.middlewares[i](h)
+// Wrap applies the chain to a handler.
+// The first middleware in the chain is the outermost (executed first).
+func (c Chain) Wrap(h http.Handler) http.Handler {
+	for _, mw := range slices.Backward(c.middlewares) {
+		h = mw(h)
 	}
 	return h
-}
-
-// ThenFunc wraps a HandlerFunc and applies the chain
-func (c Chain) ThenFunc(fn http.HandlerFunc) http.Handler {
-	return c.Then(fn)
 }

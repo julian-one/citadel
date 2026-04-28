@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"citadel/internal/middleware"
 	"citadel/internal/recipe"
 	"citadel/internal/session"
 
@@ -19,7 +18,7 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 
 		var userID string
-		if s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session); ok && s != nil {
+		if s, ok := ctx.Value(session.ContextKey).(*session.Session); ok && s != nil {
 			userID = s.User
 		}
 
@@ -62,7 +61,7 @@ func ListRecipes(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -82,9 +81,27 @@ func CreateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		// Set the user from the session to ensure the recipe is associated with the authenticated user
 		req.User = s.User
 
-		recipeID, err := recipe.Create(ctx, db, req)
+		tx, err := db.BeginTxx(ctx, nil)
+		if err != nil {
+			logger.Error("failed to begin transaction", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe"})
+			return
+		}
+		defer tx.Rollback()
+
+		recipeID, err := recipe.Create(ctx, tx, req)
 		if err != nil {
 			logger.Error("failed to create recipe", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe"})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			logger.Error("failed to commit transaction", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create recipe"})
@@ -126,7 +143,7 @@ func GetRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -160,9 +177,27 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		err = recipe.Update(ctx, db, id, req)
+		tx, err := db.BeginTxx(ctx, nil)
+		if err != nil {
+			logger.Error("failed to begin transaction", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update recipe"})
+			return
+		}
+		defer tx.Rollback()
+
+		err = recipe.Update(ctx, tx, id, req)
 		if err != nil {
 			logger.Error("failed to update recipe", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update recipe"})
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			logger.Error("failed to commit transaction", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to update recipe"})
@@ -178,7 +213,7 @@ func DeleteRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

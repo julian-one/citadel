@@ -269,7 +269,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		s, err := session.Create(ctx, db, u.Id)
+		s, err := session.Create(ctx, db, u.ID)
 		if err != nil {
 			logger.Error("failed to create session", "error", err)
 			w.Header().Set("Content-Type", "application/json")

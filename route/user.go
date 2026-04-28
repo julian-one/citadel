@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"citadel/internal/middleware"
 	"citadel/internal/session"
 	"citadel/internal/user"
 
@@ -57,7 +56,7 @@ func GetUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 
 		userID := r.PathValue("id")
-		u, err := user.ById(ctx, db, userID)
+		u, err := user.ByID(ctx, db, userID)
 		if err != nil {
 			logger.Error("failed to get user", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -100,7 +99,7 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -111,7 +110,7 @@ func UpdateUser(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		id := r.PathValue("id")
 		if s.User != id {
 			var u *user.User
-			u, err = user.ById(ctx, db, s.User)
+			u, err = user.ByID(ctx, db, s.User)
 			if err != nil || u.Role != user.RoleAdmin {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
@@ -185,7 +184,7 @@ func UpdatePassword(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

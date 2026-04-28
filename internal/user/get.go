@@ -7,19 +7,22 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ById(ctx context.Context, db *sqlx.DB, userId string) (*User, error) {
+func ByID(ctx context.Context, db sqlx.QueryerContext, userID string) (*User, error) {
 	var u User
-	err := db.GetContext(ctx, &u, `SELECT * FROM users WHERE user_id = ?`, userId)
+	err := sqlx.GetContext(ctx, db, &u, `SELECT * FROM users WHERE user_id = ?`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
 	return &u, nil
 }
 
-func ByEmailOrUsername(ctx context.Context, db *sqlx.DB, identifier string) (*User, error) {
+func ByEmailOrUsername(
+	ctx context.Context,
+	db sqlx.QueryerContext,
+	identifier string,
+) (*User, error) {
 	var u User
-	err := db.GetContext(
-		ctx,
+	err := sqlx.GetContext(ctx, db,
 		&u,
 		`SELECT * FROM users WHERE email = ? OR username = ?`,
 		identifier,
@@ -31,22 +34,30 @@ func ByEmailOrUsername(ctx context.Context, db *sqlx.DB, identifier string) (*Us
 	return &u, nil
 }
 
-func IsUsernameTaken(ctx context.Context, db *sqlx.DB, username string) (bool, error) {
+func IsUsernameTaken(ctx context.Context, db sqlx.QueryerContext, username string) (bool, error) {
 	var exists bool
-	err := db.GetContext(ctx, &exists,
+	err := sqlx.GetContext(
+		ctx,
+		db,
+		&exists,
 		`SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)`,
-		username)
+		username,
+	)
 	if err != nil {
 		return false, fmt.Errorf("failed to check username: %w", err)
 	}
 	return exists, nil
 }
 
-func IsEmailTaken(ctx context.Context, db *sqlx.DB, email string) (bool, error) {
+func IsEmailTaken(ctx context.Context, db sqlx.QueryerContext, email string) (bool, error) {
 	var exists bool
-	err := db.GetContext(ctx, &exists,
+	err := sqlx.GetContext(
+		ctx,
+		db,
+		&exists,
 		`SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)`,
-		email)
+		email,
+	)
 	if err != nil {
 		return false, fmt.Errorf("failed to check email: %w", err)
 	}

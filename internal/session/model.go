@@ -2,6 +2,10 @@ package session
 
 import "time"
 
+type contextKey string
+
+const ContextKey contextKey = "session"
+
 type Session struct {
 	SessionId string    `json:"session_id" db:"session_id"`
 	User      string    `json:"user_id"    db:"user_id"`

@@ -7,7 +7,7 @@ import (
 
 	"citadel/internal/database"
 	"citadel/internal/email"
-	"citadel/internal/logging"
+	"citadel/internal/logger"
 	"citadel/internal/parser"
 	"citadel/route"
 
@@ -36,8 +36,8 @@ func init() {
 
 func runServe(cmd *cobra.Command, args []string) error {
 	// Initialize logger
-	logger := logging.New(slog.LevelInfo)
-	slog.SetDefault(logger)
+	l := logger.New(slog.LevelInfo)
+	slog.SetDefault(l)
 
 	// Initialize database
 	db, err := database.New(viper.GetString("database.path"), viper.GetString("database.schema"))
@@ -61,7 +61,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// Initialize route handlers
 	handler := route.Initialize(route.Config{
-		Logger:     logger,
+		Logger:     l,
 		DB:         db,
 		Parser:     claude,
 		Email:      emailClient,
@@ -70,7 +70,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	// Start HTTP server
 	port := viper.GetString("server.port")
-	logger.Info("server listening", "port", port)
+	l.Info("server listening", "port", port)
 
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		return fmt.Errorf("server stopped: %w", err)

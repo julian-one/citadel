@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func Create(ctx context.Context, db *sqlx.DB, userId, recipeId string) error {
+func Create(ctx context.Context, db sqlx.ExecerContext, userId, recipeId string) error {
 	id := uuid.New().String()
 	_, err := db.ExecContext(
 		ctx,

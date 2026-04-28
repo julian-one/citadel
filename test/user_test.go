@@ -28,7 +28,7 @@ func TestGetUser_Authenticated(t *testing.T) {
 
 	var u user.User
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&u))
-	assert.Equal(t, td.User.Id, u.Id)
+	assert.Equal(t, td.User.Id, u.ID)
 	assert.Equal(t, "regularuser", u.Username)
 	assert.Equal(t, td.User.Email, u.Email)
 }

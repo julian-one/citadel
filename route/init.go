@@ -1,4 +1,3 @@
-// Package route defines the HTTP handlers and route registration for the API.
 package route
 
 import (
@@ -25,14 +24,14 @@ func Initialize(config Config) http.Handler {
 	baseChain := middleware.New(
 		middleware.Logger(config.Logger),
 	)
-	optionalChain := baseChain.Use(
+	optionalChain := baseChain.Append(
 		middleware.OptionalAuthentication(config.DB),
 	)
-	protectedChain := baseChain.Use(
+	protectedChain := baseChain.Append(
 		middleware.Authentication(config.DB),
 	)
 	// NOTE: Admin middleware is used as part of the protected chain
-	adminChain := protectedChain.Use(
+	adminChain := protectedChain.Append(
 		middleware.Admin(config.DB),
 	)
 
@@ -43,41 +42,41 @@ func Initialize(config Config) http.Handler {
 	// -----------------
 
 	// Health
-	mux.Handle("GET /health", baseChain.ThenFunc(GetHealth()))
+	mux.Handle("GET /health", baseChain.Wrap(GetHealth()))
 
 	// Auth
 	mux.Handle(
 		"POST /register",
-		baseChain.ThenFunc(Register(config.Logger, config.DB, config.Email, config.SigningKey)),
+		baseChain.Wrap(Register(config.Logger, config.DB, config.Email, config.SigningKey)),
 	)
 	mux.Handle(
 		"POST /register/verify",
-		baseChain.ThenFunc(VerifyRegistration(config.Logger, config.SigningKey)),
+		baseChain.Wrap(VerifyRegistration(config.Logger, config.SigningKey)),
 	)
 	mux.Handle(
 		"POST /register/complete",
-		baseChain.ThenFunc(CompleteRegistration(config.Logger, config.DB, config.SigningKey)),
+		baseChain.Wrap(CompleteRegistration(config.Logger, config.DB, config.SigningKey)),
 	)
-	mux.Handle("POST /login", baseChain.ThenFunc(Login(config.Logger, config.DB)))
-	mux.Handle("POST /logout", baseChain.ThenFunc(Logout(config.Logger, config.DB)))
+	mux.Handle("POST /login", baseChain.Wrap(Login(config.Logger, config.DB)))
+	mux.Handle("POST /logout", baseChain.Wrap(Logout(config.Logger, config.DB)))
 
 	// Sessions
-	mux.Handle("GET /sessions/{id}", baseChain.ThenFunc(GetSession(config.Logger, config.DB)))
+	mux.Handle("GET /sessions/{id}", baseChain.Wrap(GetSession(config.Logger, config.DB)))
 
 	// -----------------
 	// Optional
 	// -----------------
 
 	// Posts
-	mux.Handle("GET /posts", optionalChain.ThenFunc(ListPosts(config.Logger, config.DB)))
-	mux.Handle("GET /posts/{id}", optionalChain.ThenFunc(GetPost(config.Logger, config.DB)))
+	mux.Handle("GET /posts", optionalChain.Wrap(ListPosts(config.Logger, config.DB)))
+	mux.Handle("GET /posts/{id}", optionalChain.Wrap(GetPost(config.Logger, config.DB)))
 
 	// Recipes
-	mux.Handle("GET /recipes", optionalChain.ThenFunc(ListRecipes(config.Logger, config.DB)))
-	mux.Handle("GET /recipes/{id}", optionalChain.ThenFunc(GetRecipe(config.Logger, config.DB)))
+	mux.Handle("GET /recipes", optionalChain.Wrap(ListRecipes(config.Logger, config.DB)))
+	mux.Handle("GET /recipes/{id}", optionalChain.Wrap(GetRecipe(config.Logger, config.DB)))
 	mux.Handle(
 		"GET /recipes/bookmarks",
-		optionalChain.ThenFunc(ListBookmarkedRecipeIds(config.Logger, config.DB)),
+		optionalChain.Wrap(ListBookmarkedRecipeIds(config.Logger, config.DB)),
 	)
 
 	// -----------------
@@ -85,85 +84,85 @@ func Initialize(config Config) http.Handler {
 	// -----------------
 
 	// Users
-	mux.Handle("GET /users/{id}", protectedChain.ThenFunc(GetUser(config.Logger, config.DB)))
-	mux.Handle("PATCH /users/{id}", protectedChain.ThenFunc(UpdateUser(config.Logger, config.DB)))
+	mux.Handle("GET /users/{id}", protectedChain.Wrap(GetUser(config.Logger, config.DB)))
+	mux.Handle("PATCH /users/{id}", protectedChain.Wrap(UpdateUser(config.Logger, config.DB)))
 	mux.Handle(
 		"PATCH /users/{id}/password",
-		protectedChain.ThenFunc(UpdatePassword(config.Logger, config.DB)),
+		protectedChain.Wrap(UpdatePassword(config.Logger, config.DB)),
 	)
 
 	// Posts
-	mux.Handle("POST /posts", protectedChain.ThenFunc(CreatePost(config.Logger, config.DB)))
-	mux.Handle("PATCH /posts/{id}", protectedChain.ThenFunc(UpdatePost(config.Logger, config.DB)))
-	mux.Handle("DELETE /posts/{id}", protectedChain.ThenFunc(DeletePost(config.Logger, config.DB)))
+	mux.Handle("POST /posts", protectedChain.Wrap(CreatePost(config.Logger, config.DB)))
+	mux.Handle("PATCH /posts/{id}", protectedChain.Wrap(UpdatePost(config.Logger, config.DB)))
+	mux.Handle("DELETE /posts/{id}", protectedChain.Wrap(DeletePost(config.Logger, config.DB)))
 
 	// Recipes
-	mux.Handle("POST /recipes", protectedChain.ThenFunc(CreateRecipe(config.Logger, config.DB)))
+	mux.Handle("POST /recipes", protectedChain.Wrap(CreateRecipe(config.Logger, config.DB)))
 	mux.Handle(
 		"PATCH /recipes/{id}",
-		protectedChain.ThenFunc(UpdateRecipe(config.Logger, config.DB)),
+		protectedChain.Wrap(UpdateRecipe(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /recipes/{id}",
-		protectedChain.ThenFunc(DeleteRecipe(config.Logger, config.DB)),
+		protectedChain.Wrap(DeleteRecipe(config.Logger, config.DB)),
 	)
 
 	// Recipe Bookmarks
 	mux.Handle(
 		"PUT /recipes/{id}/bookmark",
-		protectedChain.ThenFunc(CreateRecipeBookmark(config.Logger, config.DB)),
+		protectedChain.Wrap(CreateRecipeBookmark(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /recipes/{id}/bookmark",
-		protectedChain.ThenFunc(DeleteRecipeBookmark(config.Logger, config.DB)),
+		protectedChain.Wrap(DeleteRecipeBookmark(config.Logger, config.DB)),
 	)
 
 	// Recipe Reviews
 	mux.Handle(
 		"GET /recipes/{id}/reviews",
-		optionalChain.ThenFunc(ListRecipeReviews(config.Logger, config.DB)),
+		optionalChain.Wrap(ListRecipeReviews(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"POST /recipes/{id}/reviews",
-		protectedChain.ThenFunc(CreateRecipeReview(config.Logger, config.DB)),
+		protectedChain.Wrap(CreateRecipeReview(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /recipe-reviews/{id}",
-		protectedChain.ThenFunc(DeleteRecipeReview(config.Logger, config.DB)),
+		protectedChain.Wrap(DeleteRecipeReview(config.Logger, config.DB)),
 	)
 
 	// Pokemon
-	mux.Handle("GET /pokemon", protectedChain.ThenFunc(SearchPokemon(config.Logger, config.DB)))
+	mux.Handle("GET /pokemon", protectedChain.Wrap(SearchPokemon(config.Logger, config.DB)))
 
 	// -----------------
 	// Admin
 	// -----------------
 
 	// Users
-	mux.Handle("GET /users", adminChain.ThenFunc(ListUsers(config.Logger, config.DB)))
+	mux.Handle("GET /users", adminChain.Wrap(ListUsers(config.Logger, config.DB)))
 	mux.Handle(
 		"PATCH /users/{id}/role",
-		adminChain.ThenFunc(UpdateUserRole(config.Logger, config.DB)),
+		adminChain.Wrap(UpdateUserRole(config.Logger, config.DB)),
 	)
 
 	// Sessions
 	mux.Handle(
 		"GET /users/{id}/sessions",
-		adminChain.ThenFunc(ListSessions(config.Logger, config.DB)),
+		adminChain.Wrap(ListSessions(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /users/{id}/sessions",
-		adminChain.ThenFunc(DeleteAllSessions(config.Logger, config.DB)),
+		adminChain.Wrap(DeleteAllSessions(config.Logger, config.DB)),
 	)
 	mux.Handle(
 		"DELETE /sessions/{id}",
-		adminChain.ThenFunc(DeleteSession(config.Logger, config.DB)),
+		adminChain.Wrap(DeleteSession(config.Logger, config.DB)),
 	)
 
 	// Recipes
 	mux.Handle(
 		"POST /recipes/scan",
-		adminChain.ThenFunc(ScanRecipe(config.Logger, config.Parser)),
+		adminChain.Wrap(ScanRecipe(config.Logger, config.Parser)),
 	)
 
 	c := cors.New(cors.Options{

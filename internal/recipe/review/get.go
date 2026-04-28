@@ -14,12 +14,13 @@ type ReviewResponse struct {
 
 func ByRecipe(
 	ctx context.Context,
-	db *sqlx.DB,
+	db sqlx.QueryerContext,
 	recipeId string,
 ) ([]ReviewResponse, error) {
 	reviews := make([]ReviewResponse, 0)
-	err := db.SelectContext(
+	err := sqlx.SelectContext(
 		ctx,
+		db,
 		&reviews,
 		`SELECT r.*, u.username 
 		 FROM recipe_reviews r 

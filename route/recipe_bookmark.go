@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"citadel/internal/middleware"
 	recipebookmark "citadel/internal/recipe/bookmark"
 	"citadel/internal/session"
 
@@ -15,7 +14,7 @@ import (
 func ListBookmarkedRecipeIds(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -41,7 +40,7 @@ func ListBookmarkedRecipeIds(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc 
 func CreateRecipeBookmark(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
@@ -68,7 +67,7 @@ func CreateRecipeBookmark(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 func DeleteRecipeBookmark(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		s, ok := ctx.Value(middleware.SessionContextKey).(*session.Session)
+		s, ok := ctx.Value(session.ContextKey).(*session.Session)
 		if !ok || s == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)

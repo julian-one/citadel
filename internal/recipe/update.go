@@ -11,16 +11,10 @@ import (
 
 func Update(
 	ctx context.Context,
-	db *sqlx.DB,
+	db sqlx.ExecerContext,
 	recipeID string,
 	edits EditableFields,
 ) error {
-	tx, err := db.Beginx()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
 	query := sq.Update("recipes").
 		Set("updated_at", sq.Expr("datetime('now')")).
 		Where(sq.Eq{"recipe_id": recipeID}).
@@ -110,7 +104,7 @@ func Update(
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, sql, args...)
+		_, err = db.ExecContext(ctx, sql, args...)
 		if err != nil {
 			return fmt.Errorf("failed to update recipe: %w", err)
 		}
@@ -118,7 +112,7 @@ func Update(
 
 	if edits.Components != nil {
 		// Cascade delete removes all components, ingredients, and instructions
-		_, err = tx.ExecContext(
+		_, err := db.ExecContext(
 			ctx,
 			`DELETE FROM recipe_components WHERE recipe_id = ?`,
 			recipeID,
@@ -129,7 +123,7 @@ func Update(
 
 		for i, comp := range *edits.Components {
 			cid := uuid.New().String()
-			_, err = tx.ExecContext(
+			_, err = db.ExecContext(
 				ctx,
 				`INSERT INTO recipe_components (component_id, recipe_id, name, position) VALUES (?, ?, ?, ?)`,
 				cid,
@@ -143,7 +137,7 @@ func Update(
 
 			for _, ing := range comp.Ingredients {
 				iid := uuid.New().String()
-				_, err = tx.ExecContext(
+				_, err = db.ExecContext(
 					ctx,
 					`INSERT INTO ingredients (ingredient_id, component_id, amount, unit, item) VALUES (?, ?, ?, ?, ?)`,
 					iid,
@@ -159,7 +153,7 @@ func Update(
 
 			for j, instr := range comp.Instructions {
 				inid := uuid.New().String()
-				_, err = tx.ExecContext(
+				_, err = db.ExecContext(
 					ctx,
 					`INSERT INTO instructions (instruction_id, component_id, step_number, instruction) VALUES (?, ?, ?, ?)`,
 					inid,
@@ -172,10 +166,6 @@ func Update(
 				}
 			}
 		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

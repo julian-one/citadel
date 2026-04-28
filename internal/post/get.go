@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ById(ctx context.Context, db *sqlx.DB, postId string) (*Post, error) {
+func ById(ctx context.Context, db sqlx.QueryerContext, postId string) (*Post, error) {
 	query := sq.Select("*").From("posts").
 		Where("post_id = ?", postId).
 		Where("deleted_at IS NULL")
@@ -19,14 +19,18 @@ func ById(ctx context.Context, db *sqlx.DB, postId string) (*Post, error) {
 	}
 
 	var p Post
-	err = db.GetContext(ctx, &p, sql, args...)
+	err = sqlx.GetContext(ctx, db, &p, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get post by id: %w", err)
 	}
 	return &p, nil
 }
 
-func ByIdWithAuthor(ctx context.Context, db *sqlx.DB, postId string) (*PostWithAuthor, error) {
+func ByIdWithAuthor(
+	ctx context.Context,
+	db sqlx.QueryerContext,
+	postId string,
+) (*PostWithAuthor, error) {
 	query := sq.Select("p.*, u.email, u.username").From("posts p").
 		InnerJoin("users u ON (u.user_id = p.user_id)").
 		Where("p.post_id = ?", postId).
@@ -38,7 +42,7 @@ func ByIdWithAuthor(ctx context.Context, db *sqlx.DB, postId string) (*PostWithA
 	}
 
 	var p PostWithAuthor
-	err = db.GetContext(ctx, &p, sql, args...)
+	err = sqlx.GetContext(ctx, db, &p, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get post with author by id: %w", err)
 	}
