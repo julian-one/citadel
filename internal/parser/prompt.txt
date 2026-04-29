@@ -21,7 +21,8 @@ Return ONLY valid JSON — no markdown code fences, no explanation, no surroundi
   "serves": 0,
   "cuisine": "string or null",
   "category": "string or null",
-  "source": "string or null"
+  "source": "string or null",
+  "notes": ["string"]
 }
 
 # OCR Cleanup
@@ -63,6 +64,9 @@ Before parsing, fix obvious OCR errors: garbled characters, misread words (e.g. 
 ## Metadata
 - `description`: a brief summary if one appears in the text, otherwise `null`.
 - `source`: cookbook name, website, or attribution if visible (e.g. page footers, headers, credits). Use `null` if not found.
+
+## Notes
+- `notes`: An array of strings containing any variations, tips, high-altitude adjustments, or additional context found in the text. Omit if not present.
 
 # Reminder
 

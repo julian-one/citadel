@@ -71,7 +71,8 @@ func ScanRecipe(
 		defer os.Remove(tmp.Name())
 		defer tmp.Close()
 
-		if _, err := io.Copy(tmp, file); err != nil {
+		_, err = io.Copy(tmp, file)
+		if err != nil {
 			logger.Error("failed to write temp file", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)

@@ -15,7 +15,7 @@ type ReviewResponse struct {
 func ByRecipe(
 	ctx context.Context,
 	db sqlx.QueryerContext,
-	recipeId string,
+	recipeID string,
 ) ([]ReviewResponse, error) {
 	reviews := make([]ReviewResponse, 0)
 	err := sqlx.SelectContext(
@@ -27,7 +27,7 @@ func ByRecipe(
 		 JOIN users u ON r.user_id = u.user_id 
 		 WHERE r.recipe_id = ? 
 		 ORDER BY r.created_at DESC`,
-		recipeId,
+		recipeID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list recipe reviews: %w", err)

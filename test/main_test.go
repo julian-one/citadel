@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	db.MustExec(string(schemaSQL))
 
 	// Only log if the test is run with the -v flag
-	var logOutput io.Writer = io.Discard
+	logOutput := io.Discard
 	if testing.Verbose() {
 		logOutput = os.Stdout
 	}

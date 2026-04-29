@@ -38,7 +38,7 @@ func Authentication(db *sqlx.DB) Middleware {
 			}
 
 			ctx := r.Context()
-			s, err := session.ById(ctx, db, token)
+			s, err := session.ByID(ctx, db, token)
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
@@ -73,7 +73,7 @@ func OptionalAuthentication(db *sqlx.DB) Middleware {
 
 			if token != "" {
 				ctx := r.Context()
-				s, err := session.ById(ctx, db, token)
+				s, err := session.ByID(ctx, db, token)
 				if err == nil {
 					ctx = context.WithValue(ctx, session.ContextKey, s)
 					r = r.WithContext(ctx)

@@ -5,9 +5,9 @@ import (
 )
 
 type RecipeReview struct {
-	Id         string         `db:"review_id"  json:"review_id"`
+	ID         string         `db:"review_id"  json:"review_id"`
 	User       string         `db:"user_id"    json:"user_id"`
-	RecipeId   string         `db:"recipe_id"  json:"recipe_id"`
+	Recipe     string         `db:"recipe_id"  json:"recipe_id"`
 	Notes      *string        `db:"notes"      json:"notes"`
 	Rating     int            `db:"rating"     json:"rating"`
 	Duration   *time.Duration `db:"duration"   json:"duration"`

@@ -64,7 +64,7 @@ func TestSearchPokemon_FromDatabase(t *testing.T) {
 
 	var p pokemon.Pokemon
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&p))
-	assert.Equal(t, 1, p.Id)
+	assert.Equal(t, 1, p.ID)
 	assert.Equal(t, "bulbasaur", p.Name)
 	assert.Equal(t, 7, p.Height)
 	assert.Equal(t, 69, p.Weight)
@@ -104,7 +104,7 @@ func TestSearchPokemon_FromPokeAPI(t *testing.T) {
 	var p pokemon.Pokemon
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&p))
 	assert.Equal(t, "charmander", p.Name)
-	assert.Equal(t, 4, p.Id)
+	assert.Equal(t, 4, p.ID)
 
 	// Searching again should return from the database (cached)
 	req, err = http.NewRequest("GET", server.URL+"/pokemon?name=charmander", nil)

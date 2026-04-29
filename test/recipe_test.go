@@ -14,7 +14,7 @@ import (
 )
 
 func TestGetRecipe_Authenticated(t *testing.T) {
-	req, err := http.NewRequest("GET", server.URL+"/recipes/"+td.RecipeId, nil)
+	req, err := http.NewRequest("GET", server.URL+"/recipes/"+td.Recipe, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -26,7 +26,7 @@ func TestGetRecipe_Authenticated(t *testing.T) {
 
 	var r recipe.Recipe
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
-	assert.Equal(t, td.RecipeId, r.ID)
+	assert.Equal(t, td.Recipe, r.ID)
 	assert.Equal(t, "Test Recipe", r.Title)
 	require.Len(t, r.Components, 1)
 	assert.Len(t, r.Components[0].Ingredients, 1)
@@ -36,7 +36,7 @@ func TestGetRecipe_Authenticated(t *testing.T) {
 }
 
 func TestGetRecipe_Unauthenticated(t *testing.T) {
-	req, err := http.NewRequest("GET", server.URL+"/recipes/"+td.RecipeId, nil)
+	req, err := http.NewRequest("GET", server.URL+"/recipes/"+td.Recipe, nil)
 	require.NoError(t, err)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -47,7 +47,7 @@ func TestGetRecipe_Unauthenticated(t *testing.T) {
 
 	var r recipe.Recipe
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
-	assert.Equal(t, td.RecipeId, r.ID)
+	assert.Equal(t, td.Recipe, r.ID)
 }
 
 func TestListRecipes_Authenticated(t *testing.T) {
@@ -104,7 +104,7 @@ func TestUpdateRecipe_OwnRecipe(t *testing.T) {
 	payload := `{"title": "Updated Title"}`
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/recipes/"+td.RecipeId,
+		server.URL+"/recipes/"+td.Recipe,
 		strings.NewReader(payload),
 	)
 	require.NoError(t, err)
@@ -118,7 +118,7 @@ func TestUpdateRecipe_OwnRecipe(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Verify update
-	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+td.RecipeId, nil)
+	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+td.Recipe, nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 	resp, _ = http.DefaultClient.Do(req)
 	defer resp.Body.Close()
@@ -131,7 +131,7 @@ func TestUpdateRecipe_OtherUser(t *testing.T) {
 	payload := `{"title": "Hacked"}`
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/recipes/"+td.RecipeId,
+		server.URL+"/recipes/"+td.Recipe,
 		strings.NewReader(payload),
 	)
 	require.NoError(t, err)
@@ -156,11 +156,11 @@ func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 	resp, _ := http.DefaultClient.Do(req)
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
-	recipeId := result["recipe_id"]
+	recipeID := result["recipe_id"]
 	resp.Body.Close()
 
 	// Delete it
-	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+recipeId, nil)
+	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+recipeID, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -171,7 +171,7 @@ func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Verify deletion — soft-deleted recipes are filtered by ById, returning 404
-	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+recipeId, nil)
+	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+recipeID, nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 	resp, _ = http.DefaultClient.Do(req)
 	defer resp.Body.Close()
@@ -179,7 +179,7 @@ func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 }
 
 func TestDeleteRecipe_OtherUser(t *testing.T) {
-	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+td.RecipeId, nil)
+	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+td.Recipe, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.Admin.Session})
 

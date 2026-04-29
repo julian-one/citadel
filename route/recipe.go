@@ -169,7 +169,8 @@ func UpdateRecipe(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		var req recipe.EditableFields
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err = json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
 			logger.Warn("failed to decode update recipe request", "error", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)

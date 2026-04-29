@@ -14,7 +14,7 @@ func GetSession(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		id := r.PathValue("id")
-		s, err := session.ById(ctx, db, id)
+		s, err := session.ByID(ctx, db, id)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)

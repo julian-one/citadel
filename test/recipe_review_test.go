@@ -15,7 +15,7 @@ import (
 // ---------- Bookmark Tests ----------
 
 func TestBookmarkRecipe(t *testing.T) {
-	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.RecipeId+"/bookmark", nil)
+	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.Recipe+"/bookmark", nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -32,7 +32,7 @@ func TestBookmarkRecipe(t *testing.T) {
 
 func TestBookmarkRecipe_Duplicate(t *testing.T) {
 	// Bookmark again — should be idempotent
-	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.RecipeId+"/bookmark", nil)
+	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.Recipe+"/bookmark", nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -45,13 +45,13 @@ func TestBookmarkRecipe_Duplicate(t *testing.T) {
 
 func TestUnbookmarkRecipe(t *testing.T) {
 	// Bookmark first
-	req, _ := http.NewRequest("PUT", server.URL+"/recipes/"+td.RecipeId+"/bookmark", nil)
+	req, _ := http.NewRequest("PUT", server.URL+"/recipes/"+td.Recipe+"/bookmark", nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 	resp, _ := http.DefaultClient.Do(req)
 	resp.Body.Close()
 
 	// Unbookmark
-	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+td.RecipeId+"/bookmark", nil)
+	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+td.Recipe+"/bookmark", nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -63,7 +63,7 @@ func TestUnbookmarkRecipe(t *testing.T) {
 }
 
 func TestBookmarkRecipe_Unauthenticated(t *testing.T) {
-	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.RecipeId+"/bookmark", nil)
+	req, err := http.NewRequest("PUT", server.URL+"/recipes/"+td.Recipe+"/bookmark", nil)
 	require.NoError(t, err)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -168,7 +168,7 @@ func TestListRecipeReviews(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var reviews []map[string]interface{}
+	var reviews []map[string]any
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&reviews))
 	assert.NotEmpty(t, reviews)
 	assert.NotEmpty(t, reviews[0]["username"])
@@ -189,10 +189,10 @@ func TestDeleteRecipeReview(t *testing.T) {
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 	resp.Body.Close()
-	reviewId := result["review_id"]
+	reviewID := result["review_id"]
 
 	// Delete it
-	req, err := http.NewRequest("DELETE", server.URL+"/recipe-reviews/"+reviewId, nil)
+	req, err := http.NewRequest("DELETE", server.URL+"/recipe-reviews/"+reviewID, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -218,10 +218,10 @@ func TestDeleteRecipeReview_OtherUser(t *testing.T) {
 	var result map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 	resp.Body.Close()
-	reviewId := result["review_id"]
+	reviewID := result["review_id"]
 
 	// Try to delete as admin (different user)
-	req, err := http.NewRequest("DELETE", server.URL+"/recipe-reviews/"+reviewId, nil)
+	req, err := http.NewRequest("DELETE", server.URL+"/recipe-reviews/"+reviewID, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.Admin.Session})
 
@@ -236,7 +236,7 @@ func TestRecipeReview_Unauthenticated(t *testing.T) {
 	payload := `{"notes": "Should fail"}`
 	req, err := http.NewRequest(
 		"POST",
-		server.URL+"/recipes/"+td.RecipeId+"/reviews",
+		server.URL+"/recipes/"+td.Recipe+"/reviews",
 		strings.NewReader(payload),
 	)
 	require.NoError(t, err)

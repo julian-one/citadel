@@ -11,13 +11,13 @@ import (
 func Update(
 	ctx context.Context,
 	db sqlx.ExtContext,
-	userId string,
+	userID string,
 	username *string,
 	role *string,
 ) (*User, error) {
 	query := sq.Update("users").
 		Set("updated_at", sq.Expr("datetime('now')")).
-		Where(sq.Eq{"user_id": userId})
+		Where(sq.Eq{"user_id": userID})
 
 	if username != nil {
 		query = query.Set("username", *username)

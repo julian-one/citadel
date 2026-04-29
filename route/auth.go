@@ -223,7 +223,7 @@ func CompleteRegistration(logger *slog.Logger, db *sqlx.DB, signingKey string) h
 				Encode(map[string]string{"error": "Account created but failed to create session"})
 			return
 		}
-		session.SetSessionCookie(w, s.SessionId)
+		session.SetSessionCookie(w, s.SessionID)
 
 		logger.Info("email verified and user created", "user_id", userID)
 		w.Header().Set("Content-Type", "application/json")
@@ -277,7 +277,7 @@ func Login(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"error": "Failed to create session"})
 			return
 		}
-		session.SetSessionCookie(w, s.SessionId)
+		session.SetSessionCookie(w, s.SessionID)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

@@ -16,7 +16,7 @@ import (
 // --- Read-only tests (run before mutations) ---
 
 func TestGetUser_Authenticated(t *testing.T) {
-	req, err := http.NewRequest("GET", server.URL+"/users/"+td.User.Id, nil)
+	req, err := http.NewRequest("GET", server.URL+"/users/"+td.User.ID, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -28,7 +28,7 @@ func TestGetUser_Authenticated(t *testing.T) {
 
 	var u user.User
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&u))
-	assert.Equal(t, td.User.Id, u.ID)
+	assert.Equal(t, td.User.ID, u.ID)
 	assert.Equal(t, "regularuser", u.Username)
 	assert.Equal(t, td.User.Email, u.Email)
 }
@@ -79,7 +79,7 @@ func TestListUsers_NonAdmin(t *testing.T) {
 func TestUpdateUser_DuplicateUsername(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id,
+		server.URL+"/users/"+td.User.ID,
 		strings.NewReader(`{"username":"adminuser"}`),
 	)
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestUpdateUser_DuplicateUsername(t *testing.T) {
 func TestUpdateUser_OtherUser_NonAdmin(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.Admin.Id,
+		server.URL+"/users/"+td.Admin.ID,
 		strings.NewReader(`{"username":"hacked"}`),
 	)
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestUpdateUser_OtherUser_NonAdmin(t *testing.T) {
 func TestUpdateUserRole_NonAdmin(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id+"/role",
+		server.URL+"/users/"+td.User.ID+"/role",
 		strings.NewReader(`{"role":"admin"}`),
 	)
 	require.NoError(t, err)
@@ -130,7 +130,7 @@ func TestUpdateUserRole_NonAdmin(t *testing.T) {
 func TestUpdateUserRole_InvalidRole(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id+"/role",
+		server.URL+"/users/"+td.User.ID+"/role",
 		strings.NewReader(`{"role":"superadmin"}`),
 	)
 	require.NoError(t, err)
@@ -149,7 +149,7 @@ func TestUpdateUserRole_InvalidRole(t *testing.T) {
 func TestUpdateUser_OwnUsername(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id,
+		server.URL+"/users/"+td.User.ID,
 		strings.NewReader(`{"username":"newname"}`),
 	)
 	require.NoError(t, err)
@@ -170,7 +170,7 @@ func TestUpdateUser_OwnUsername(t *testing.T) {
 func TestUpdateUser_OtherUser_Admin(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id,
+		server.URL+"/users/"+td.User.ID,
 		strings.NewReader(`{"username":"renamed"}`),
 	)
 	require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestUpdateUser_OtherUser_Admin(t *testing.T) {
 func TestUpdateUserRole_Admin(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id+"/role",
+		server.URL+"/users/"+td.User.ID+"/role",
 		strings.NewReader(`{"role":"admin"}`),
 	)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestUpdateUserRole_Admin(t *testing.T) {
 func TestUpdatePassword_Unauthenticated(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id+"/password",
+		server.URL+"/users/"+td.User.ID+"/password",
 		strings.NewReader(`{"new_password":"newpass123"}`),
 	)
 	require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestUpdatePassword_Unauthenticated(t *testing.T) {
 func TestUpdatePassword_OtherUser(t *testing.T) {
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.Admin.Id+"/password",
+		server.URL+"/users/"+td.Admin.ID+"/password",
 		strings.NewReader(`{"new_password":"hacked"}`),
 	)
 	require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestUpdatePassword_Success(t *testing.T) {
 	newPassword := "updatedpass456"
 	req, err := http.NewRequest(
 		"PATCH",
-		server.URL+"/users/"+td.User.Id+"/password",
+		server.URL+"/users/"+td.User.ID+"/password",
 		strings.NewReader(`{"new_password":"`+newPassword+`"}`),
 	)
 	require.NoError(t, err)

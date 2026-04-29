@@ -37,7 +37,7 @@ func CreateRecipeReview(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		req.User = s.User
-		req.RecipeId = recipeID
+		req.Recipe = recipeID
 
 		tx, err := db.BeginTxx(ctx, &sql.TxOptions{})
 		if err != nil {

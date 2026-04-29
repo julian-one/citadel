@@ -8,8 +8,8 @@ import (
 )
 
 // Delete removes a specific session (logout).
-func Delete(ctx context.Context, db sqlx.ExecerContext, sessionId string) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE session_id = ?`, sessionId)
+func Delete(ctx context.Context, db sqlx.ExecerContext, sessionID string) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE session_id = ?`, sessionID)
 	if err != nil {
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
@@ -17,8 +17,8 @@ func Delete(ctx context.Context, db sqlx.ExecerContext, sessionId string) error 
 }
 
 // DeleteAll removes all sessions for a user (logout everywhere).
-func DeleteAll(ctx context.Context, db sqlx.ExecerContext, userId string) error {
-	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userId)
+func DeleteAll(ctx context.Context, db sqlx.ExecerContext, userID string) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}

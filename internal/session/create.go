@@ -12,13 +12,13 @@ import (
 func Create(
 	ctx context.Context,
 	db sqlx.ExtContext,
-	userId string,
+	userID string,
 ) (*Session, error) {
 	var s Session
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?) RETURNING *;`,
 		uuid.New().String(),
-		userId,
+		userID,
 		time.Now().Add(SessionDuration),
 	).StructScan(&s)
 	if err != nil {

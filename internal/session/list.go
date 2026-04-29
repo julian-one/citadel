@@ -8,12 +8,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func List(ctx context.Context, db sqlx.QueryerContext, userId string) ([]Session, error) {
+func List(ctx context.Context, db sqlx.QueryerContext, userID string) ([]Session, error) {
 	s := []Session{}
 
 	query, args, err := sq.Select("*").
 		From("sessions").
-		Where(sq.Eq{"user_id": userId}).
+		Where(sq.Eq{"user_id": userID}).
 		OrderBy("expires_at DESC").
 		ToSql()
 	if err != nil {

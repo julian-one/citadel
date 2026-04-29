@@ -8,9 +8,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func ById(ctx context.Context, db sqlx.QueryerContext, postId string) (*Post, error) {
+func ByID(ctx context.Context, db sqlx.QueryerContext, postID string) (*Post, error) {
 	query := sq.Select("*").From("posts").
-		Where("post_id = ?", postId).
+		Where("post_id = ?", postID).
 		Where("deleted_at IS NULL")
 
 	sql, args, err := query.PlaceholderFormat(sq.Dollar).ToSql()
@@ -26,14 +26,14 @@ func ById(ctx context.Context, db sqlx.QueryerContext, postId string) (*Post, er
 	return &p, nil
 }
 
-func ByIdWithAuthor(
+func ByIDWithAuthor(
 	ctx context.Context,
 	db sqlx.QueryerContext,
-	postId string,
+	postID string,
 ) (*PostWithAuthor, error) {
 	query := sq.Select("p.*, u.email, u.username").From("posts p").
 		InnerJoin("users u ON (u.user_id = p.user_id)").
-		Where("p.post_id = ?", postId).
+		Where("p.post_id = ?", postID).
 		Where("p.deleted_at IS NULL")
 
 	sql, args, err := query.PlaceholderFormat(sq.Dollar).ToSql()

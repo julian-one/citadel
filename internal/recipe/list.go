@@ -158,23 +158,23 @@ func List(ctx context.Context, db sqlx.QueryerContext, opts ListOptions) ([]Reci
 		return nil, fmt.Errorf("failed to list recipes: %w", err)
 	}
 
-	recipe_ids := make([]string, len(recipes))
+	recipeIDs := make([]string, len(recipes))
 	for i, r := range recipes {
-		recipe_ids[i] = r.ID
+		recipeIDs[i] = r.ID
 	}
 
-	all_components, err := LoadComponents(ctx, db, recipe_ids)
+	allComponents, err := LoadComponents(ctx, db, recipeIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	by_recipe := make(map[string][]Component, len(all_components))
-	for _, c := range all_components {
-		by_recipe[c.Recipe] = append(by_recipe[c.Recipe], c)
+	recipeComponents := make(map[string][]Component, len(allComponents))
+	for _, c := range allComponents {
+		recipeComponents[c.Recipe] = append(recipeComponents[c.Recipe], c)
 	}
 
 	for i := range recipes {
-		recipes[i].Components = by_recipe[recipes[i].ID]
+		recipes[i].Components = recipeComponents[recipes[i].ID]
 		if recipes[i].Components == nil {
 			recipes[i].Components = []Component{}
 		}

@@ -12,13 +12,13 @@ import (
 )
 
 type TestData struct {
-	Admin    TestUser
-	User     TestUser
-	RecipeId string
+	Admin  TestUser
+	User   TestUser
+	Recipe string
 }
 
 type TestUser struct {
-	Id      string
+	ID      string
 	Session string
 	Email   string
 }
@@ -26,7 +26,7 @@ type TestUser struct {
 func Seed(db *sqlx.DB) *TestData {
 	ctx := context.Background()
 
-	adminId, err := user.Create(ctx, db, user.CreateRequest{
+	adminID, err := user.Create(ctx, db, user.CreateRequest{
 		Username: "adminuser",
 		Email:    "admin@test.com",
 		Password: "password123",
@@ -34,9 +34,9 @@ func Seed(db *sqlx.DB) *TestData {
 	if err != nil {
 		panic(err)
 	}
-	db.MustExec(`UPDATE users SET role = 'admin' WHERE user_id = ?`, adminId)
+	db.MustExec(`UPDATE users SET role = 'admin' WHERE user_id = ?`, adminID)
 
-	userId, err := user.Create(ctx, db, user.CreateRequest{
+	userID, err := user.Create(ctx, db, user.CreateRequest{
 		Username: "regularuser",
 		Email:    "user@test.com",
 		Password: "password123",
@@ -44,12 +44,12 @@ func Seed(db *sqlx.DB) *TestData {
 	if err != nil {
 		panic(err)
 	}
-	adminSession, err := session.Create(ctx, db, adminId)
+	adminSession, err := session.Create(ctx, db, adminID)
 	if err != nil {
 		panic(err)
 	}
 
-	userSession, err := session.Create(ctx, db, userId)
+	userSession, err := session.Create(ctx, db, userID)
 	if err != nil {
 		panic(err)
 	}
@@ -59,8 +59,8 @@ func Seed(db *sqlx.DB) *TestData {
 	serves := uint32(1)
 	cuisine := recipe.American
 	category := recipe.Main
-	recipeId, err := recipe.Create(ctx, db, recipe.CreateRequest{
-		User:        userId,
+	recipeID, err := recipe.Create(ctx, db, recipe.CreateRequest{
+		User:        userID,
 		Title:       "Test Recipe",
 		Description: &desc,
 		Components: []recipe.ComponentRequest{
@@ -88,15 +88,15 @@ func Seed(db *sqlx.DB) *TestData {
 
 	return &TestData{
 		Admin: TestUser{
-			Id:      adminId,
-			Session: adminSession.SessionId,
+			ID:      adminID,
+			Session: adminSession.SessionID,
 			Email:   "admin@test.com",
 		},
 		User: TestUser{
-			Id:      userId,
-			Session: userSession.SessionId,
+			ID:      userID,
+			Session: userSession.SessionID,
 			Email:   "user@test.com",
 		},
-		RecipeId: recipeId,
+		Recipe: recipeID,
 	}
 }

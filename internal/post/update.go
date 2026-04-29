@@ -10,12 +10,12 @@ import (
 func Update(
 	ctx context.Context,
 	db sqlx.ExtContext,
-	postId string,
+	postID string,
 	edits EditableFields,
 ) (*Post, error) {
 	query := sq.Update("posts").
 		Set("updated_at", sq.Expr("datetime('now')")).
-		Where(sq.Eq{"post_id": postId}).
+		Where(sq.Eq{"post_id": postID}).
 		Where(sq.Eq{"deleted_at": nil}).
 		Suffix("RETURNING *").
 		PlaceholderFormat(sq.Question)

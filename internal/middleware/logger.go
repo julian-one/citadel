@@ -26,9 +26,9 @@ func Logger(logger *slog.Logger) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			requestId := uuid.New().String()
-			requestLogger := logger.With(slog.String("request_id", requestId))
-			w.Header().Set("X-Request-ID", requestId)
+			requestID := uuid.New().String()
+			requestLogger := logger.With(slog.String("request_id", requestID))
+			w.Header().Set("X-Request-ID", requestID)
 
 			rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(rw, r)

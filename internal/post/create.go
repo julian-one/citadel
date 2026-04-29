@@ -16,12 +16,12 @@ type CreateRequest struct {
 }
 
 func Create(ctx context.Context, db sqlx.ExecerContext, request CreateRequest) (string, error) {
-	postId := uuid.New().String()
+	postID := uuid.New().String()
 	_, err := db.ExecContext(
 		ctx,
 		`INSERT INTO posts (post_id, user_id, title, content, public) 
 			VALUES (?, ?, ?, ?, ?)`,
-		postId,
+		postID,
 		request.User,
 		request.Title,
 		request.Content,
@@ -31,5 +31,5 @@ func Create(ctx context.Context, db sqlx.ExecerContext, request CreateRequest) (
 		return "", fmt.Errorf("failed to create post: %w", err)
 	}
 
-	return postId, nil
+	return postID, nil
 }

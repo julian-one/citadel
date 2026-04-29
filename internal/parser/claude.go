@@ -35,6 +35,7 @@ type scanResult struct {
 	Cuisine         *string         `json:"cuisine"`
 	Category        *string         `json:"category"`
 	Source          *string         `json:"source"`
+	Notes           []string        `json:"notes"`
 }
 
 func (s *scanResult) toRecipe() *recipe.Recipe {
@@ -100,6 +101,16 @@ func (s *scanResult) toRecipe() *recipe.Recipe {
 		} else {
 			st := recipe.SourceBook
 			r.SourceType = &st
+		}
+	}
+
+	if len(s.Notes) > 0 {
+		notesText := strings.Join(s.Notes, "\n\n")
+		if r.Description != nil && *r.Description != "" {
+			newDesc := *r.Description + "\n\n" + notesText
+			r.Description = &newDesc
+		} else {
+			r.Description = &notesText
 		}
 	}
 

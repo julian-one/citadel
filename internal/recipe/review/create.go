@@ -12,7 +12,7 @@ import (
 
 type CreateRequest struct {
 	User       string         `json:"user_id"`
-	RecipeId   string         `json:"recipe_id"`
+	Recipe     string         `json:"recipe_id"`
 	Notes      *string        `json:"notes"`
 	Rating     int            `json:"rating"`
 	Duration   *time.Duration `json:"duration"`
@@ -50,7 +50,7 @@ func Create(ctx context.Context, db sqlx.ExtContext, req CreateRequest) (string,
 		SELECT COUNT(*) 
 		FROM recipe_reviews 
 		WHERE user_id = ? AND recipe_id = ? AND date(created_at, 'localtime') = date('now', 'localtime')
-	`, req.User, req.RecipeId)
+	`, req.User, req.Recipe)
 	if err != nil {
 		return "", fmt.Errorf("failed to check existing reviews: %w", err)
 	}
@@ -65,7 +65,7 @@ func Create(ctx context.Context, db sqlx.ExtContext, req CreateRequest) (string,
 			VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		id,
 		req.User,
-		req.RecipeId,
+		req.Recipe,
 		req.Notes,
 		req.Rating,
 		req.Duration,

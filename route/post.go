@@ -90,7 +90,7 @@ func GetPost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		ctx := r.Context()
 		id := r.PathValue("id")
 
-		p, err := post.ByIdWithAuthor(ctx, db, id)
+		p, err := post.ByIDWithAuthor(ctx, db, id)
 		if err != nil {
 			logger.Error("failed to get post", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -117,7 +117,7 @@ func UpdatePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		}
 
 		id := r.PathValue("id")
-		original, err := post.ById(ctx, db, id)
+		original, err := post.ByID(ctx, db, id)
 		if err != nil {
 			logger.Error("failed to fetch post for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
@@ -169,7 +169,7 @@ func DeletePost(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		original, err := post.ById(ctx, db, id)
+		original, err := post.ByID(ctx, db, id)
 		if err != nil {
 			logger.Error("failed to fetch post for ownership check", "error", err)
 			w.Header().Set("Content-Type", "application/json")
