@@ -17,6 +17,7 @@ import (
 type ListOptions struct {
 	Search         string
 	User           string
+	Authors        []string
 	Public         *bool
 	IncludeDeleted bool
 	OrderBy        []database.Order
@@ -32,6 +33,10 @@ func ParseListOptions(r *http.Request, user string) (ListOptions, error) {
 		opts.Search = search
 	}
 	opts.User = user
+
+	if authors := q.Get("authors"); authors != "" {
+		opts.Authors = strings.Split(authors, ",")
+	}
 
 	if public := q.Get("public"); public != "" {
 		b, err := strconv.ParseBool(public)
@@ -87,18 +92,23 @@ func applyFilters(q sq.SelectBuilder, opts ListOptions) sq.SelectBuilder {
 		q = q.Where(sq.Expr("LOWER(p.title) LIKE ?", searchPattern))
 	}
 
-	if opts.User != "" && opts.Public == nil {
+	// Base visibility rule: users can always see public posts, and their own private posts
+	if opts.User != "" {
 		q = q.Where(sq.Or{
-			sq.Eq{"p.user_id": opts.User},
 			sq.Eq{"p.public": true},
+			sq.Eq{"p.user_id": opts.User},
 		})
 	} else {
-		if opts.User != "" {
-			q = q.Where(sq.Eq{"p.user_id": opts.User})
-		}
-		if opts.Public != nil {
-			q = q.Where(sq.Eq{"p.public": *opts.Public})
-		}
+		q = q.Where(sq.Eq{"p.public": true})
+	}
+
+	// Apply explicit filters
+	if len(opts.Authors) > 0 {
+		q = q.Where(sq.Eq{"p.user_id": opts.Authors})
+	}
+
+	if opts.Public != nil {
+		q = q.Where(sq.Eq{"p.public": *opts.Public})
 	}
 
 	return q

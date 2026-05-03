@@ -31,6 +31,10 @@ func Authentication(db *sqlx.DB) Middleware {
 			}
 
 			if token == "" {
+				token = r.URL.Query().Get("token")
+			}
+
+			if token == "" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				json.NewEncoder(w).Encode(map[string]string{"error": "Authentication required"})

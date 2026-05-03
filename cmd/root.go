@@ -44,6 +44,15 @@ func init() {
 	if err := viper.BindEnv("hmac.signing_key", "HMAC_SIGNING_KEY"); err != nil {
 		slog.Error("failed to bind env", "key", "hmac.signing_key", "error", err)
 	}
+	if err := viper.BindEnv("alpaca.key", "ALPACA_KEY"); err != nil {
+		slog.Error("failed to bind env", "key", "alpaca.key", "error", err)
+	}
+	if err := viper.BindEnv("alpaca.secret", "ALPACA_SECRET"); err != nil {
+		slog.Error("failed to bind env", "key", "alpaca.secret", "error", err)
+	}
+	if err := viper.BindEnv("alpaca.endpoint", "ALPACA_ENDPOINT"); err != nil {
+		slog.Error("failed to bind env", "key", "alpaca.endpoint", "error", err)
+	}
 }
 
 func initializeConfig() error {
@@ -57,6 +66,9 @@ func initializeConfig() error {
 	viper.SetDefault("resend.from_email", "noreply@contact.julian-one.com")
 	viper.SetDefault("resend.api_key", "")
 	viper.SetDefault("hmac.signing_key", "")
+	viper.SetDefault("alpaca.endpoint", "https://paper-api.alpaca.markets")
+	viper.SetDefault("alpaca.key", "")
+	viper.SetDefault("alpaca.secret", "")
 
 	viper.SetEnvPrefix("CITADEL")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))

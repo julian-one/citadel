@@ -36,7 +36,7 @@ func Logger(logger *slog.Logger) Middleware {
 			requestLogger.Info("http request completed",
 				"method", r.Method,
 				"path", r.URL.Path,
-				"remote_addr", getClientIP(r),
+				"remote_addr", GetClientIP(r),
 				"status", rw.status,
 				"duration", time.Since(start),
 			)

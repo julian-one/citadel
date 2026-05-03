@@ -303,3 +303,138 @@ func Logout(logger *slog.Logger, db *sqlx.DB) http.HandlerFunc {
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
+
+func ForgotPassword(
+	logger *slog.Logger,
+	db *sqlx.DB,
+	emailClient *email.Client,
+	signingKey string,
+) http.HandlerFunc {
+	type Request struct {
+		Email string `json:"email"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var request Request
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&request)
+		if err != nil {
+			logger.Warn("failed to decode forgot-password request body", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+		if request.Email == "" {
+			logger.Warn("email is required")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Email is required"})
+			return
+		}
+
+		u, err := user.ByEmailOrUsername(ctx, db, request.Email)
+		if err != nil {
+			// Do not leak whether the email exists or not
+			logger.Info("forgot password requested for non-existent email", "email", request.Email)
+		} else {
+			// Generate token
+			t, err := token.Create(signingKey, u.Username, u.Email)
+			if err != nil {
+				logger.Error("failed to create forgot-password token", "error", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": "Failed to process request"})
+				return
+			}
+
+			// Send email
+			err = emailClient.SendPasswordReset(
+				u.Email,
+				u.Username,
+				emailClient.PasswordResetURL(t),
+			)
+			if err != nil {
+				logger.Error("failed to send password reset email", "error", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).
+					Encode(map[string]string{"error": "Failed to send password reset email"})
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "If an account with that email exists, we have sent a password reset link.",
+		})
+	}
+}
+
+func ResetPassword(logger *slog.Logger, db *sqlx.DB, signingKey string) http.HandlerFunc {
+	type Request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		var request Request
+		decoder := json.NewDecoder(r.Body)
+		decoder.DisallowUnknownFields()
+		err := decoder.Decode(&request)
+		if err != nil {
+			logger.Warn("failed to decode reset-password request body", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request body"})
+			return
+		}
+		if request.Token == "" || request.Password == "" {
+			logger.Warn("token and password are required")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Token and password are required"})
+			return
+		}
+
+		// Validate token
+		claims, err := token.Verify(signingKey, request.Token)
+		if err != nil {
+			logger.Warn("reset-password token verification failed", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Invalid or expired reset token"})
+			return
+		}
+
+		u, err := user.ByEmailOrUsername(ctx, db, claims.Email)
+		if err != nil {
+			logger.Warn("user not found from token claims", "email", claims.Email)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Invalid token payload"})
+			return
+		}
+
+		err = user.UpdatePassword(ctx, db, u.ID, request.Password)
+		if err != nil {
+			logger.Error("failed to update password", "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).
+				Encode(map[string]string{"error": "Failed to update password"})
+			return
+		}
+
+		logger.Info("password reset successfully", "user_id", u.ID)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Password updated successfully"})
+	}
+}

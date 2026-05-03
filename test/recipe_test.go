@@ -118,12 +118,14 @@ func TestUpdateRecipe_OwnRecipe(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Verify update
-	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+td.Recipe, nil)
+	req, err = http.NewRequest("GET", server.URL+"/recipes/"+td.Recipe, nil)
+	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
-	resp, _ = http.DefaultClient.Do(req)
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	var r recipe.Recipe
-	json.NewDecoder(resp.Body).Decode(&r)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&r))
 	assert.Equal(t, "Updated Title", r.Title)
 }
 
@@ -150,17 +152,19 @@ func TestUpdateRecipe_OtherUser(t *testing.T) {
 func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 	// Create a recipe to delete
 	payload := `{"title": "Delete Me", "components": [], "cuisine": "American", "category": "Main"}`
-	req, _ := http.NewRequest("POST", server.URL+"/recipes", strings.NewReader(payload))
+	req, err := http.NewRequest("POST", server.URL+"/recipes", strings.NewReader(payload))
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
-	resp, _ := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
 	var result map[string]string
-	json.NewDecoder(resp.Body).Decode(&result)
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
 	recipeID := result["recipe_id"]
 	resp.Body.Close()
 
 	// Delete it
-	req, err := http.NewRequest("DELETE", server.URL+"/recipes/"+recipeID, nil)
+	req, err = http.NewRequest("DELETE", server.URL+"/recipes/"+recipeID, nil)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
 
@@ -171,9 +175,11 @@ func TestDeleteRecipe_OwnRecipe(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Verify deletion — soft-deleted recipes are filtered by ById, returning 404
-	req, _ = http.NewRequest("GET", server.URL+"/recipes/"+recipeID, nil)
+	req, err = http.NewRequest("GET", server.URL+"/recipes/"+recipeID, nil)
+	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: td.User.Session})
-	resp, _ = http.DefaultClient.Do(req)
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"citadel/internal/broker"
 	"citadel/internal/database"
 	"citadel/internal/email"
 	"citadel/internal/logger"
@@ -66,6 +67,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 		Parser:     claude,
 		Email:      emailClient,
 		SigningKey: signingKey,
+		Broker: broker.New(
+			viper.GetString("alpaca.key"),
+			viper.GetString("alpaca.secret"),
+			viper.GetString("alpaca.endpoint"),
+		),
 	})
 
 	// Start HTTP server

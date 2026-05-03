@@ -1,15 +1,19 @@
 package route
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"citadel/internal/broker"
 	"citadel/internal/email"
 	"citadel/internal/middleware"
 	"citadel/internal/parser"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/cors"
+	"golang.org/x/time/rate"
 )
 
 type Config struct {
@@ -18,6 +22,7 @@ type Config struct {
 	Parser     *parser.Claude
 	Email      *email.Client
 	SigningKey string
+	Broker     *broker.Client
 }
 
 func Initialize(config Config) http.Handler {
@@ -35,6 +40,21 @@ func Initialize(config Config) http.Handler {
 		middleware.Admin(config.DB),
 	)
 
+	ctx := context.Background() // Background context for long-running middleware tasks
+
+	// 10 requests per minute (1 token every 6 secs), max burst of 3
+	registerChain := baseChain.Append(
+		middleware.NewRateLimiter(ctx, rate.Every(time.Minute/10), 3),
+	)
+	// 3 requests per 15 minutes (1 token every 5 mins), max burst of 1
+	forgotPasswordChain := baseChain.Append(
+		middleware.NewRateLimiter(ctx, rate.Every(15*time.Minute/3), 1),
+	)
+	// 10 requests per minute (1 token every 6 secs), max burst of 3
+	loginChain := baseChain.Append(
+		middleware.NewRateLimiter(ctx, rate.Every(time.Minute/10), 3),
+	)
+
 	mux := http.NewServeMux()
 
 	// -----------------
@@ -47,7 +67,7 @@ func Initialize(config Config) http.Handler {
 	// -----------------
 	mux.Handle(
 		"POST /register",
-		baseChain.Wrap(Register(config.Logger, config.DB, config.Email, config.SigningKey)),
+		registerChain.Wrap(Register(config.Logger, config.DB, config.Email, config.SigningKey)),
 	)
 	mux.Handle(
 		"POST /register/verify",
@@ -57,8 +77,18 @@ func Initialize(config Config) http.Handler {
 		"POST /register/complete",
 		baseChain.Wrap(CompleteRegistration(config.Logger, config.DB, config.SigningKey)),
 	)
-	mux.Handle("POST /login", baseChain.Wrap(Login(config.Logger, config.DB)))
+	mux.Handle("POST /login", loginChain.Wrap(Login(config.Logger, config.DB)))
 	mux.Handle("POST /logout", baseChain.Wrap(Logout(config.Logger, config.DB)))
+	mux.Handle(
+		"POST /forgot-password",
+		forgotPasswordChain.Wrap(
+			ForgotPassword(config.Logger, config.DB, config.Email, config.SigningKey),
+		),
+	)
+	mux.Handle(
+		"POST /reset-password",
+		baseChain.Wrap(ResetPassword(config.Logger, config.DB, config.SigningKey)),
+	)
 
 	// -----------------
 	// Users
@@ -153,6 +183,30 @@ func Initialize(config Config) http.Handler {
 	// Pokemon
 	// -----------------
 	mux.Handle("GET /pokemon", protectedChain.Wrap(SearchPokemon(config.Logger, config.DB)))
+
+	// -----------------
+	// Trading
+	// -----------------
+	mux.Handle(
+		"GET /trading/account",
+		protectedChain.Wrap(GetTradingAccount(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"GET /trading/stocks/bars",
+		protectedChain.Wrap(GetHistoricalBars(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"GET /trading/stocks/stream",
+		protectedChain.Wrap(StreamMarketData(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"GET /trading/assets/search",
+		protectedChain.Wrap(SearchAssets(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"POST /trading/backtest",
+		protectedChain.Wrap(RunBacktest(config.Logger, config.Broker)),
+	)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"https://julian-one.com", "http://localhost:3000"},

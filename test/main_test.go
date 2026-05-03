@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"citadel/internal/broker"
 	"citadel/route"
 
 	"github.com/jmoiron/sqlx"
@@ -42,6 +43,11 @@ func TestMain(m *testing.M) {
 	handler := route.Initialize(route.Config{
 		DB:     db,
 		Logger: logger,
+		Broker: broker.New(
+			"test-key",
+			"test-secret",
+			"http://127.0.0.1:0",
+		), // dummy broker for tests
 	})
 	server = httptest.NewServer(handler)
 

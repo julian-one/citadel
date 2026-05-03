@@ -28,3 +28,6 @@ config*.json
 
 # curl
 curl.*
+
+# scratch
+scratch.md

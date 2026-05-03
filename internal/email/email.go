@@ -1,11 +1,21 @@
 package email
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
-	"html"
+	"html/template"
 
 	"github.com/resend/resend-go/v3"
 )
+
+//go:embed templates/*.html
+var templateFS embed.FS
+var tmpl *template.Template
+
+func init() {
+	tmpl = template.Must(template.ParseFS(templateFS, "templates/*.html"))
+}
 
 type Client struct {
 	resend    *resend.Client
@@ -26,22 +36,49 @@ func (c *Client) VerificationURL(code string) string {
 }
 
 func (c *Client) SendVerification(toEmail, username, verificationURL string) error {
-	safeUsername := html.EscapeString(username)
-	body := fmt.Sprintf(`<p>Hey %s,</p>
-						 <p>Thanks for signing up! Please verify your email address:</p>
-						 <p><a href="%s">Verify Email</a></p>
-						 <p>This link expires in 24 hours. 
-						 	If you didn't create this account, you can safely ignore this email.</p>`,
-		safeUsername, verificationURL)
+	var body bytes.Buffer
+	err := tmpl.ExecuteTemplate(&body, "verification.html", map[string]any{
+		"Username":        username,
+		"VerificationURL": verificationURL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute verification template: %w", err)
+	}
 
-	_, err := c.resend.Emails.Send(&resend.SendEmailRequest{
+	_, err = c.resend.Emails.Send(&resend.SendEmailRequest{
 		From:    c.fromEmail,
 		To:      []string{toEmail},
 		Subject: "Verify your email address",
-		Html:    body,
+		Html:    body.String(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send verification email: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) PasswordResetURL(token string) string {
+	return c.baseURL + "/reset-password?token=" + token
+}
+
+func (c *Client) SendPasswordReset(toEmail, username, resetURL string) error {
+	var body bytes.Buffer
+	err := tmpl.ExecuteTemplate(&body, "password_reset.html", map[string]any{
+		"Username": username,
+		"ResetURL": resetURL,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute password reset template: %w", err)
+	}
+
+	_, err = c.resend.Emails.Send(&resend.SendEmailRequest{
+		From:    c.fromEmail,
+		To:      []string{toEmail},
+		Subject: "Reset your password",
+		Html:    body.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send password reset email: %w", err)
 	}
 	return nil
 }
