@@ -30,4 +30,7 @@ config*.json
 curl.*
 
 # scratch
-scratch.md
+scratch*.*
+
+# testing
+cmd/seed.go

@@ -10,11 +10,13 @@ import (
 	"citadel/internal/broker"
 )
 
-func GetHistoricalBars(l *slog.Logger, b *broker.Client) http.HandlerFunc {
+func GetHistoricalBars(logger *slog.Logger, b *broker.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		symbol := strings.ToUpper(r.URL.Query().Get("symbol"))
 		if symbol == "" {
-			http.Error(w, "symbol is required", http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "symbol is required"})
 			return
 		}
 
@@ -27,7 +29,10 @@ func GetHistoricalBars(l *slog.Logger, b *broker.Client) http.HandlerFunc {
 		if startStr != "" {
 			start, err = time.Parse(time.RFC3339, startStr)
 			if err != nil {
-				http.Error(w, "invalid start date format, expected RFC3339", http.StatusBadRequest)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).
+					Encode(map[string]string{"error": "invalid start date format, expected RFC3339"})
 				return
 			}
 		} else {
@@ -37,7 +42,10 @@ func GetHistoricalBars(l *slog.Logger, b *broker.Client) http.HandlerFunc {
 		if endStr != "" {
 			end, err = time.Parse(time.RFC3339, endStr)
 			if err != nil {
-				http.Error(w, "invalid end date format, expected RFC3339", http.StatusBadRequest)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).
+					Encode(map[string]string{"error": "invalid end date format, expected RFC3339"})
 				return
 			}
 		} else {
@@ -46,8 +54,10 @@ func GetHistoricalBars(l *slog.Logger, b *broker.Client) http.HandlerFunc {
 
 		bars, err := b.GetHistoricalBars(symbol, start, end)
 		if err != nil {
-			l.Error("failed to get historical bars", "symbol", symbol, "error", err)
-			http.Error(w, "failed to fetch market data", http.StatusInternalServerError)
+			logger.Error("failed to get historical bars", "symbol", symbol, "error", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "failed to fetch market data"})
 			return
 		}
 

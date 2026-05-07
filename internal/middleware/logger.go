@@ -8,17 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// responseWriter wraps http.ResponseWriter to capture the status code.
-type responseWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.status = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
 // Logger returns middleware that logs each request after the handler completes,
 // including method, path, status, duration, and a generated request ID.
 func Logger(logger *slog.Logger) Middleware {

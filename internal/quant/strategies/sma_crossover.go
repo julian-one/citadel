@@ -30,7 +30,11 @@ func (s *SMACrossover) Initialize(p *quant.Portfolio) {
 	s.history = make([]float64, 0)
 }
 
-func (s *SMACrossover) OnBar(bar marketdata.Bar, p *quant.Portfolio) {
+func (s *SMACrossover) OnBar(symbol string, bar marketdata.Bar, p *quant.Portfolio) {
+	if symbol != s.Symbol {
+		return // Only process bars for the symbol we care about
+	}
+
 	s.history = append(s.history, bar.Close)
 
 	if len(s.history) <= s.LongPeriod {

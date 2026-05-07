@@ -229,3 +229,82 @@ func (c *Claude) Parse(text string) (*recipe.Recipe, error) {
 
 	return scan.toRecipe(), nil
 }
+
+// Analyze sends text to Claude with a custom prompt and returns the raw string response.
+func (c *Claude) Analyze(prompt string, text string) (string, error) {
+	reqBody := struct {
+		Model     string `json:"model"`
+		MaxTokens int    `json:"max_tokens"`
+		System    string `json:"system"`
+		Messages  []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+	}{
+		Model:     c.Model,
+		MaxTokens: 4096,
+		System:    prompt,
+		Messages: []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		}{
+			{Role: "user", Content: text},
+		},
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		`https://api.anthropic.com/v1/messages`,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", c.APIKey)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: time.Second * 60}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var apiResp struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(respBody, &apiResp); err != nil {
+		return "", fmt.Errorf("failed to parse API response: %w", err)
+	}
+
+	if apiResp.Error != nil {
+		return "", fmt.Errorf("API error: %s", apiResp.Error.Message)
+	}
+
+	if len(apiResp.Content) == 0 {
+		return "", fmt.Errorf("API returned empty content")
+	}
+
+	return strings.TrimSpace(apiResp.Content[0].Text), nil
+}

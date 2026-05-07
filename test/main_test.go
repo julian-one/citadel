@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"flag"
 	"io"
 	"log/slog"
@@ -9,7 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"citadel/internal/broker"
 	"citadel/route"
 
 	"github.com/jmoiron/sqlx"
@@ -23,6 +23,8 @@ var (
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+
+	ctx := context.Background()
 
 	db := sqlx.MustConnect("sqlite3", ":memory:?_foreign_keys=on")
 
@@ -40,14 +42,9 @@ func TestMain(m *testing.M) {
 	logger := slog.New(slog.NewJSONHandler(logOutput, nil))
 
 	// Initialize the server with the test database and logger
-	handler := route.Initialize(route.Config{
+	handler := route.Initialize(ctx, route.Config{
 		DB:     db,
 		Logger: logger,
-		Broker: broker.New(
-			"test-key",
-			"test-secret",
-			"http://127.0.0.1:0",
-		), // dummy broker for tests
 	})
 	server = httptest.NewServer(handler)
 

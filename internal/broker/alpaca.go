@@ -17,11 +17,10 @@ type Client struct {
 	marketdata *marketdata.Client
 	Stream     *stream.StocksClient
 
-	assetsCache []alpaca.Asset
-	cacheMutex  sync.RWMutex
+	loadAssets func() ([]alpaca.Asset, error)
 }
 
-func New(key, secret, endpoint string) *Client {
+func New(ctx context.Context, key, secret, endpoint string) *Client {
 	endpoint = strings.TrimSuffix(endpoint, "/v2")
 	streamClient := stream.NewStocksClient(
 		marketdata.IEX,
@@ -41,18 +40,38 @@ func New(key, secret, endpoint string) *Client {
 		Stream: streamClient,
 	}
 
-	go func() {
-		err := c.Stream.Connect(context.Background())
-		if err != nil {
-			slog.Error("failed to connect alpaca stream", "error", err)
-		}
-	}()
+	c.loadAssets = sync.OnceValues(func() ([]alpaca.Asset, error) {
+		return c.alpaca.GetAssets(alpaca.GetAssetsRequest{
+			Status:     "active",
+			AssetClass: "us_equity",
+		})
+	})
+
+	err := c.Stream.Connect(ctx)
+	if err != nil {
+		slog.Error("failed to connect alpaca stream", "error", err)
+	}
 
 	return c
 }
 
 func (c *Client) GetAccount() (*alpaca.Account, error) {
 	return c.alpaca.GetAccount()
+}
+
+func (c *Client) GetPositions() ([]alpaca.Position, error) {
+	return c.alpaca.GetPositions()
+}
+
+func (c *Client) GetPortfolioHistory(
+	period string,
+	timeframe string,
+) (*alpaca.PortfolioHistory, error) {
+	req := alpaca.GetPortfolioHistoryRequest{
+		Period:    period,
+		TimeFrame: alpaca.TimeFrame(timeframe),
+	}
+	return c.alpaca.GetPortfolioHistory(req)
 }
 
 func (c *Client) GetHistoricalBars(symbol string, start, end time.Time) ([]marketdata.Bar, error) {
@@ -67,42 +86,25 @@ func (c *Client) GetHistoricalBars(symbol string, start, end time.Time) ([]marke
 
 // SearchAssets returns up to 20 active US equities matching the query
 func (c *Client) SearchAssets(query string) ([]alpaca.Asset, error) {
-	c.cacheMutex.RLock()
-	needsLoad := len(c.assetsCache) == 0
-	c.cacheMutex.RUnlock()
-
-	if needsLoad {
-		c.cacheMutex.Lock()
-		if len(c.assetsCache) == 0 { // double check pattern
-			assets, err := c.alpaca.GetAssets(alpaca.GetAssetsRequest{
-				Status:     "active",
-				AssetClass: "us_equity",
-			})
-			if err != nil {
-				c.cacheMutex.Unlock()
-				return nil, err
-			}
-			c.assetsCache = assets
-		}
-		c.cacheMutex.Unlock()
+	assetsCache, err := c.loadAssets()
+	if err != nil {
+		return nil, err
 	}
-
-	c.cacheMutex.RLock()
-	defer c.cacheMutex.RUnlock()
 
 	var results []alpaca.Asset
 	query = strings.ToLower(strings.TrimSpace(query))
 
 	// If query is very short, just return the first few
 	if len(query) == 0 {
-		if len(c.assetsCache) > 20 {
-			return c.assetsCache[:20], nil
+		if len(assetsCache) > 20 {
+			return assetsCache[:20], nil
 		}
-		return c.assetsCache, nil
+		return assetsCache, nil
 	}
 
-	for _, a := range c.assetsCache {
-		if strings.Contains(strings.ToLower(a.Symbol), query) || strings.Contains(strings.ToLower(a.Name), query) {
+	for _, a := range assetsCache {
+		if strings.Contains(strings.ToLower(a.Symbol), query) ||
+			strings.Contains(strings.ToLower(a.Name), query) {
 			results = append(results, a)
 			if len(results) >= 20 {
 				break
@@ -111,4 +113,16 @@ func (c *Client) SearchAssets(query string) ([]alpaca.Asset, error) {
 	}
 
 	return results, nil
+}
+
+func (c *Client) PlaceOrder(req alpaca.PlaceOrderRequest) (*alpaca.Order, error) {
+	return c.alpaca.PlaceOrder(req)
+}
+
+func (c *Client) CancelOrder(orderID string) error {
+	return c.alpaca.CancelOrder(orderID)
+}
+
+func (c *Client) ConnectTradeUpdates(ctx context.Context, handler func(alpaca.TradeUpdate)) error {
+	return c.alpaca.StreamTradeUpdates(ctx, handler, alpaca.StreamTradeUpdatesRequest{})
 }

@@ -107,3 +107,42 @@ CREATE TABLE IF NOT EXISTS pokemon (
   weight INTEGER NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS trading_sessions (
+  session_id TEXT PRIMARY KEY,
+  strategy TEXT NOT NULL,
+  status TEXT NOT NULL,
+  symbols TEXT NOT NULL,
+  starting_capital REAL NOT NULL,
+  parameters TEXT,
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  ended_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS trading_orders (
+  order_id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  client_order_id TEXT UNIQUE,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  type TEXT NOT NULL,
+  qty REAL NOT NULL,
+  filled_qty REAL DEFAULT 0,
+  avg_price REAL,
+  status TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (session_id) REFERENCES trading_sessions (session_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS trading_backtests (
+  backtest_id TEXT PRIMARY KEY,
+  strategy TEXT NOT NULL,
+  symbols TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  starting_capital REAL NOT NULL,
+  parameters TEXT,
+  metrics TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

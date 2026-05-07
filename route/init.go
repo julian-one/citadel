@@ -25,7 +25,7 @@ type Config struct {
 	Broker     *broker.Client
 }
 
-func Initialize(config Config) http.Handler {
+func Initialize(ctx context.Context, config Config) http.Handler {
 	baseChain := middleware.New(
 		middleware.Logger(config.Logger),
 	)
@@ -39,8 +39,6 @@ func Initialize(config Config) http.Handler {
 	adminChain := protectedChain.Append(
 		middleware.Admin(config.DB),
 	)
-
-	ctx := context.Background() // Background context for long-running middleware tasks
 
 	// 10 requests per minute (1 token every 6 secs), max burst of 3
 	registerChain := baseChain.Append(
@@ -189,23 +187,55 @@ func Initialize(config Config) http.Handler {
 	// -----------------
 	mux.Handle(
 		"GET /trading/account",
-		protectedChain.Wrap(GetTradingAccount(config.Logger, config.Broker)),
+		adminChain.Wrap(GetTradingAccount(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"GET /trading/positions",
+		adminChain.Wrap(GetPositions(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"GET /trading/portfolio/history",
+		adminChain.Wrap(GetPortfolioHistory(config.Logger, config.Broker)),
+	)
+	mux.Handle(
+		"POST /trading/orders",
+		adminChain.Wrap(PlaceManualOrder(config.Logger, config.Broker)),
 	)
 	mux.Handle(
 		"GET /trading/stocks/bars",
-		protectedChain.Wrap(GetHistoricalBars(config.Logger, config.Broker)),
+		adminChain.Wrap(GetHistoricalBars(config.Logger, config.Broker)),
 	)
 	mux.Handle(
 		"GET /trading/stocks/stream",
-		protectedChain.Wrap(StreamMarketData(config.Logger, config.Broker)),
+		adminChain.Wrap(StreamMarketData(config.Logger, config.Broker)),
 	)
 	mux.Handle(
 		"GET /trading/assets/search",
-		protectedChain.Wrap(SearchAssets(config.Logger, config.Broker)),
+		adminChain.Wrap(SearchAssets(config.Logger, config.Broker)),
 	)
 	mux.Handle(
 		"POST /trading/backtest",
-		protectedChain.Wrap(RunBacktest(config.Logger, config.Broker)),
+		adminChain.Wrap(RunBacktest(config.Logger, config.Broker, config.DB)),
+	)
+	mux.Handle(
+		"POST /trading/live/start",
+		adminChain.Wrap(StartLiveEngine(config.Logger, config.Broker, config.DB)),
+	)
+	mux.Handle(
+		"POST /trading/live/stop",
+		adminChain.Wrap(StopLiveEngine(config.Logger)),
+	)
+	mux.Handle(
+		"GET /trading/sessions",
+		adminChain.Wrap(ListTradingSessions(config.Logger, config.DB)),
+	)
+	mux.Handle(
+		"GET /trading/sessions/{id}",
+		adminChain.Wrap(GetTradingSessionDetails(config.Logger, config.DB)),
+	)
+	mux.Handle(
+		"GET /trading/backtests",
+		adminChain.Wrap(ListBacktests(config.Logger, config.DB)),
 	)
 
 	c := cors.New(cors.Options{

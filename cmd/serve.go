@@ -36,43 +36,57 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
 	// Initialize logger
 	l := logger.New(slog.LevelInfo)
 	slog.SetDefault(l)
 
 	// Initialize database
-	db, err := database.New(viper.GetString("database.path"), viper.GetString("database.schema"))
+	db, err := database.New(
+		viper.GetString("database.path"),
+		viper.GetString("database.schema"),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
 	// Initialize parser
-	claude := parser.New(viper.GetString("anthropic.api_key"), viper.GetString("anthropic.model"))
+	claude := parser.New(
+		viper.GetString("anthropic.api_key"),
+		viper.GetString("anthropic.model"),
+	)
 
 	// Initialize email client
-	baseURL := viper.GetString("server.base_url")
 	emailClient := email.New(
 		viper.GetString("resend.api_key"),
 		viper.GetString("resend.from_email"),
-		baseURL,
+		viper.GetString("server.base_url"),
 	)
 
 	signingKey := viper.GetString("hmac.signing_key")
 
+	// Initialize broker
+	b := broker.New(
+		ctx,
+		viper.GetString("alpaca.key"),
+		viper.GetString("alpaca.secret"),
+		viper.GetString("alpaca.endpoint"),
+	)
+
 	// Initialize route handlers
-	handler := route.Initialize(route.Config{
+	handler := route.Initialize(ctx, route.Config{
 		Logger:     l,
 		DB:         db,
 		Parser:     claude,
 		Email:      emailClient,
 		SigningKey: signingKey,
-		Broker: broker.New(
-			viper.GetString("alpaca.key"),
-			viper.GetString("alpaca.secret"),
-			viper.GetString("alpaca.endpoint"),
-		),
+		Broker:     b,
 	})
+
+	// Resume any running live engines
+	go route.ResumeLiveEngines(ctx, l, b, db)
 
 	// Start HTTP server
 	port := viper.GetString("server.port")

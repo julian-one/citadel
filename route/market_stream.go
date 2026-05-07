@@ -11,11 +11,13 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
 )
 
-func StreamMarketData(l *slog.Logger, b *broker.Client) http.HandlerFunc {
+func StreamMarketData(logger *slog.Logger, b *broker.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		symbol := r.URL.Query().Get("symbol")
 		if symbol == "" {
-			http.Error(w, "symbol is required", http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "symbol is required"})
 			return
 		}
 
@@ -26,7 +28,9 @@ func StreamMarketData(l *slog.Logger, b *broker.Client) http.HandlerFunc {
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "streaming unsupported"})
 			return
 		}
 
@@ -42,7 +46,7 @@ func StreamMarketData(l *slog.Logger, b *broker.Client) http.HandlerFunc {
 
 		err := b.Stream.SubscribeToTrades(handler, symbol)
 		if err != nil {
-			l.Error("failed to subscribe to trades", "symbol", symbol, "error", err)
+			logger.Error("failed to subscribe to trades", "symbol", symbol, "error", err)
 			return
 		}
 

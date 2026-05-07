@@ -20,11 +20,12 @@ type Trade struct {
 }
 
 type Portfolio struct {
-	Cash      float64            `json:"cash"`
-	Positions map[string]float64 `json:"positions"`
-	Trades    []Trade            `json:"trades"`
-	EquityLog []EquitySnapshot   `json:"equity_log"`
-	Metrics   Metrics            `json:"metrics"`
+	Cash          float64            `json:"cash"`
+	Positions     map[string]float64 `json:"positions"`
+	Trades        []Trade            `json:"trades"`
+	EquityLog     []EquitySnapshot   `json:"equity_log"`
+	Metrics       Metrics            `json:"metrics"`
+	PendingOrders []OrderIntent      `json:"pending_orders"`
 }
 
 type EquitySnapshot struct {
@@ -34,11 +35,16 @@ type EquitySnapshot struct {
 
 func NewPortfolio(startingCash float64) *Portfolio {
 	return &Portfolio{
-		Cash:      startingCash,
-		Positions: make(map[string]float64),
-		Trades:    make([]Trade, 0),
-		EquityLog: make([]EquitySnapshot, 0),
+		Cash:          startingCash,
+		Positions:     make(map[string]float64),
+		Trades:        make([]Trade, 0),
+		EquityLog:     make([]EquitySnapshot, 0),
+		PendingOrders: make([]OrderIntent, 0),
 	}
+}
+
+func (p *Portfolio) SubmitOrder(intent OrderIntent) {
+	p.PendingOrders = append(p.PendingOrders, intent)
 }
 
 func (p *Portfolio) Buy(symbol string, qty float64, price float64, ts time.Time) {

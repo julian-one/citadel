@@ -5,9 +5,12 @@ import (
 )
 
 type Metrics struct {
-	TotalReturn float64 `json:"total_return"`
-	MaxDrawdown float64 `json:"max_drawdown"`
-	SharpeRatio float64 `json:"sharpe_ratio"`
+	TotalReturn  float64 `json:"total_return"`
+	MaxDrawdown  float64 `json:"max_drawdown"`
+	SharpeRatio  float64 `json:"sharpe_ratio"`
+	WinRate      float64 `json:"win_rate"`
+	TotalTrades  int     `json:"total_trades"`
+	ProfitFactor float64 `json:"profit_factor"`
 }
 
 func (p *Portfolio) CalculateMetrics() {
@@ -68,9 +71,40 @@ func (p *Portfolio) CalculateMetrics() {
 		sharpeRatio = (meanReturn / stdDev) * math.Sqrt(252.0)
 	}
 
+	// 4. Additional Metrics (Win Rate, Total Trades, Profit Factor based on daily returns)
+	winningDays := 0
+	grossProfit := 0.0
+	grossLoss := 0.0
+
+	for _, r := range returns {
+		if r > 0 {
+			winningDays++
+			grossProfit += r
+		} else if r < 0 {
+			grossLoss += math.Abs(r)
+		}
+	}
+
+	winRate := 0.0
+	if len(returns) > 0 {
+		winRate = float64(winningDays) / float64(len(returns))
+	}
+
+	profitFactor := 0.0
+	if grossLoss > 0 {
+		profitFactor = grossProfit / grossLoss
+	} else if grossProfit > 0 {
+		profitFactor = 999.0 // arbitrarily high
+	}
+
+	totalTrades := len(p.Trades)
+
 	p.Metrics = Metrics{
-		TotalReturn: totalReturn,
-		MaxDrawdown: maxDrawdown,
-		SharpeRatio: sharpeRatio,
+		TotalReturn:  totalReturn,
+		MaxDrawdown:  maxDrawdown,
+		SharpeRatio:  sharpeRatio,
+		WinRate:      winRate,
+		TotalTrades:  totalTrades,
+		ProfitFactor: profitFactor,
 	}
 }

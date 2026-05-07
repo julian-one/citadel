@@ -7,5 +7,5 @@ import (
 type Strategy interface {
 	Name() string
 	Initialize(p *Portfolio)
-	OnBar(bar marketdata.Bar, p *Portfolio)
+	OnBar(symbol string, bar marketdata.Bar, p *Portfolio)
 }
